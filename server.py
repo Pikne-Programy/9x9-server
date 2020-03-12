@@ -43,6 +43,8 @@ class Server:
                     lprint(f'{pre} got:\n{data}\nEND')
                     json.loads(data)
                     c.send(json.dumps({"status":0,"method":"UIN","params":{"msg":""},"time":int(time.time())}).encode())
+                except ConnectionResetError:
+                    pass
                 except:
                     c.send(json.dumps({"status":0,"method":"ERR","params":{"msg":traceback.format_exc()},"time":int(time.time())}).encode())
         finally:
