@@ -1,0 +1,231 @@
+# 9x9 Protocol v0.1
+
+## Table of Contents
+
+  * [Abstract](#abstract)
+  * [Practical use of packets](#practical-use-of-packets)
+  * [What should the client do](#what-should-the-client-do)
+  * [The structure of each packet](#the-structure-of-each-packet)
+  * [Packets](#packets)
+    + [JON (join)](#jon--join-)
+    + [STT (state)](#stt--state-)
+    + [GET](#get)
+    + [SET](#set)
+    + [BAD](#bad)
+    + [ERR (error)](#err--error-)
+    + [DBG (debug)](#dbg--debug-)
+    + [PNG (ping)](#png--ping-)
+    + [POG (pong)](#pog--pong-)
+    + [UIN (unimplemented)](#uin--unimplemented-)
+    + [VER (version)](#ver--version-)
+
+<sub><sup><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></sup></sub>
+
+
+## Abstract
+
+There is a client and he's sending info to a server that he wants to play a game. I'm convinced there is no sense of doing long-term rooms which should be stored in a database for a long time. Initially, let's assume the single game will take 10 minutes on average. Clients will not disconnect from the server during a game. If they do,  this will be interpreted as a surrender, the second user will be disconnected and the room will be destroyed. I have an idea of making the named queues. So there is a public queue named 'public' and every player that wants to play with random another player should join it. But if there're players that want only to play with each other, they can join a queue with another (of course the same) name and they will be added to their private queue.
+
+
+## Practical use of packets
+
+There is the first packet that informs the willing of the user to join a named queue. Let's name it JON (JOiN) packet. And there have to be specified the name of the queue that he wants to join.
+
+When another user joins the same queue, the new room is being made. And therefore there is sent an STT (STaTe/STaTus) packet which informs about a state of the whole board, whose is a turn,  did someone win and who won.
+
+Additionally, a client can send a request for an STT packet. Let's name it a GET packet. So when the server gets a GET packet, it responds with an STT packet.
+
+When a client wants to send a move, he sends a SET packet with x and y coordinate of a field that the user wants to set a mark on.
+
+The server can respond with a BAD packet when the move was not compliant (with the rules of the game), an ERR packet when an error on the server occurred (e. g. IndexError and alike) or a DBG packet with some diagnostic info which can be helpful to debug the whole system.
+
+
+## What should the client do
+
+- get the name of the queue that the user wants to join
+- send a JON packet with the name of the queue (the default is `public`, all is case sensitive of course)
+- wait for an STT packet and render the received board when he gets it
+- when the board was rendered and the user clicked a field, send a SET packet with coordinates of the field
+- when he gets a BAD packet, show info (pop-up or something) with a communication error message (because the client hopes that everything was good and the server thinks in the other way, so there was something with communication between a server and a client)
+- when he gets an ERR packet, show info about a server error
+- when he gets a DBG packet and the option of "viewing diagnostic info" was checked, show the received message
+
+
+## The structure of each packet
+
+Let's use JSON.
+
+Let's say that every packet is the same form, for example:
+```json
+{
+    "status": 0,
+    "method": "GET",
+    "params": {},
+    "time": 1583857011
+}
+```
+
+ - `status` (integer) is the current state of the sender. Currently, it has no sense, so there can be an integer used for debugging purposes.
+ - `method` (string) is the name of the packet's method. So it's its type, what the sender wants us to inform about. Necessarily it should be three letters, each in upper case.
+ - `params` (object) is all things related to the given method.
+ - `time`  (integer) is the current local time of sending the packet. Formatted in UNIX timestamp, UTC, for diagnostic purposes.
+
+
+## Packets
+
+### JON (join)
+
+the request of joining to the queue
+ - `room` (string) - the name of the queue that the user wants to join  (default: `"public"`, but it should be mentioned in the packet)
+
+e. g.
+```json
+{
+    "status": 0,
+    "method": "JON",
+    "params": {
+        "room": "public"
+    },
+    "time": 1584009226
+}
+```
+
+
+### STT (state)
+
+the info about the room and the board
+ - `board` (string) - the string with the board, next rows of the board, made of ASCII characters: 'X', 'O', '-'
+   so the second char of `board` is a field with x=1 and y=0
+ - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"` or `"O"`)
+ - `you` (string) - your mark (e. g. `"X"` or `"O"`)
+ - `move` (string) - whose turn is it (e. g. `"X"` or `"O"`)
+ - `marked` (integer) - the marked subboard (so that where should be next move done);
+   ```
+    012
+    345
+    678
+   ```
+   or -1 if no subboard is marked (so the move can be done anywhere).
+   It's an integer between -1 and 8 inclusive.
+
+e. g.
+```json
+{
+    "status": 0,
+    "method": "STT",
+    "params": {
+        "board": "O---------X--O------X---------XXX-------O-----------------------------O---------X",
+        "whoWon": "-",
+        "you": "X",
+        "move": "O",
+        "marked": 2
+    },
+    "time": 1584009226
+}
+```
+
+#### Disclaimer
+
+The client can get an  STT packet anytime, so he can get it right after connecting to the server without sending a JON packet. So it would be nice that the client can interpret and render the board mentioned in the STT packet and show it then.
+
+
+### GET
+
+the request of an STT packet
+ - no params
+
+#### Disclaimer
+
+There can be no GET packet sent and the client can receive the STT packet. Usually, the server sent an STT packet when only the state of room changes so there is no need to send a GET packet. But if the client wants to get sure that nothing changed, he can send a GET packet.
+
+
+### SET
+
+the request of making a move, placing a mark in the specific field
+ - `x` (integer) -  the x coordinate of the field
+ - `y` (integer)-  the y coordinate of the field
+
+   | # x<br>y | 012<br>&nbsp; | 345<br>&nbsp; | 678<br>&nbsp; |
+   | :- | --- | --- | --- |
+   | **0<br>1<br>2** | - - -<br>- - -<br>- - - | - - -<br>- - -<br>- - - | - - -<br>- - -<br>- - - |
+   | **3<br>4<br>5** | - - -<br>- - -<br>- - - | - - -<br>- - -<br>- - - | - - -<br>- - -<br>- - - |
+   | **6<br>7<br>8** | - - -<br>- - -<br>- - - | - - -<br>- - -<br>- - - | - - -<br>- - -<br>- - - |
+
+e. g.
+```json
+{
+    "status": 0,
+    "method": "SET",
+    "params": {
+        "x": 4,
+        "y": 4
+    },
+    "time": 1584009226
+}
+```
+
+
+### BAD
+
+the info that the move was incorrect (there was no your turn, in the selected field there is a mark already, the room is won)
+- `msg` (string) - additional info
+
+
+### ERR (error)
+
+the info about the server error
+ - `msg` (string) - additional info
+
+
+### DBG (debug)
+
+the additional info that has no effect on the game
+ - `msg` (string) - additional info 
+
+
+### PNG (ping)
+
+the request of a POG packet
+ - no params
+
+
+### POG (pong)
+
+the reply to a PNG packet
+ - no params
+
+
+### UIN (unimplemented)
+
+the info about the unsupported stuff (unrecognized method or alike)
+ - `msg` (string) - additional info
+
+
+### VER (version)
+
+the info about the version of the using software
+ - `name` (string) - the name of the using software
+ - `author` (string) - the name of the software author
+ - `version` (string) - the version of the software
+ - `fullName` (string) - the description of the software (name, version, sitepage...)
+ - `protocolVersion` (string) - the version of the supported protocol
+ - `nick` (string) - the nick of the user, used to the identify users; matching regex `^[A-Z][A-Z0-9_]{2,29}$`
+ - `fullNick` (string) - the nick of the user (utf-8 of course)
+
+e. g.
+```json
+{
+    "status": 0,
+    "method": "VER",
+    "params": {
+        "name": "tic-tac-toe-9x9-mobile",
+        "author": "Pikne-Programy",
+        "version": "v0.0.0.1",
+        "fullName": "tic-tac-toe-9x9-mobile\nv0.0.0.1\nhttps://github.com/Pikne-Programy/tic-tac-toe-9x9-mobile",
+        "protocolVersion": "v0.1",
+        "nick": "NIRCEK_2103",
+        "fullNick": "Nircek (Marcin Zepp)"
+    },
+    "time": 1584009226
+}
+```
