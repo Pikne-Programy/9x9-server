@@ -34,13 +34,19 @@ if ! [ "`pwd`" = "$systemwide" ]; then
   cp -r . "$systemwide"
   chown -R server9x9:server9x9 "$systemwide"
   echo "done"
+  rm /etc/sudoers.d/server9x9
+  cat << EOT >> /etc/sudoers.d/server9x9
+%server9x9 ALL= NOPASSWD: /bin/systemctl start server9x9
+%server9x9 ALL= NOPASSWD: /bin/systemctl stop server9x9
+%server9x9 ALL= NOPASSWD: /bin/systemctl status server9x9
+EOT
   echo "falling to system-wide link.sh"
   cd "$systemwide"
   ./link.sh
   exit $?
 fi
 ./unlink.sh
-cp server9x9.service /etc/systemd/system/server9x9.service
+cp server9x9.service server9x9updater.service server9x9updater.timer  /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable server9x9
 systemctl start server9x9
