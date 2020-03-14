@@ -1,0 +1,15 @@
+[Unit]
+Description=9x9 Server Updater Service
+
+[Service]
+User=server9x9
+WorkingDirectory=/usr/local/lib/9x9-server
+
+ExecStart=/usr/local/lib/9x9-server/update.sh
+SuccessExitStatus=143
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

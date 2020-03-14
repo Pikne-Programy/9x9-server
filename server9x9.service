@@ -1,0 +1,16 @@
+[Unit]
+Description=9x9 Server Service
+
+[Service]
+User=server9x9
+WorkingDirectory=/usr/local/lib/9x9-server
+Environment=PYTHONUNBUFFERED=1
+
+ExecStart=/usr/bin/env python3 /usr/local/lib/9x9-server/server.py
+SuccessExitStatus=143
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

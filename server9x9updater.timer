@@ -1,0 +1,10 @@
+[Unit]
+Description=Run server9x9updater every 15 minutes
+Requires=server9x9updater.service
+
+[Timer]
+Unit=server9x9updater.service
+OnUnitInactiveSec=15m
+
+[Install]
+WantedBy=timers.target
