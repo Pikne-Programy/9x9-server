@@ -26,15 +26,15 @@ if ! [ "`pwd`" = "$systemwide" ]; then
     echo -n "system-wide location exists; Do you want to remove system-wide version and replace it with that (y/n)?"
     check || { echo "no system-wide, exitting"; exit 3; }
     rm -r "$systemwide"
-    systemctl stop server9x9
-    userdel server9x9
   fi
+  [[ -f /etc/systemd/system/server9x9.service ]] && systemctl stop server9x9
+  id server9x9 &>/dev/null && userdel server9x9
   useradd -r -s /bin/false server9x9
   mkdir "$systemwide"
   cp -r . "$systemwide"
   chown -R server9x9:server9x9 "$systemwide"
   echo "done"
-  rm /etc/sudoers.d/server9x9
+  [[ -f /etc/sudoers.d/server9x9 ]] && rm /etc/sudoers.d/server9x9
   cat << EOT >> /etc/sudoers.d/server9x9
 %server9x9 ALL= NOPASSWD: /bin/systemctl start server9x9
 %server9x9 ALL= NOPASSWD: /bin/systemctl stop server9x9
@@ -48,6 +48,10 @@ fi
 ./unlink.sh
 cp server9x9.service server9x9updater.service server9x9updater.timer  /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable server9x9
-systemctl start server9x9
-systemctl status server9x9
+echo -n "Do you want to enable server9x9 (y/n)?"
+check && systemctl enable server9x9
+echo -n "Do you want to enable auto-updater (y/n)?"
+check && systemctl enable server9x9updater.timer
+echo -n "Do you want to start server9x9 (y/n)?"
+check && { systemctl start server9x9; systemctl status server9x9; }
+echo "DONE, exitting"
