@@ -2,7 +2,6 @@
 
 from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, timeout
 
-from _thread import *
 import threading
 import json
 import time
@@ -21,6 +20,7 @@ class Server:
     def __init__(self, port):
         self.port = port
         self.KILLING = False
+        self.thread_num = 1
     def _handler(self, signum, frame):
         lprint(f'[SIGNAL] Killing {signum} {frame}')
         self.KILLING = True
@@ -36,16 +36,19 @@ class Server:
             while not self.KILLING:
                 try:
                     (c, addr) = self.s.accept()
-                    start_new_thread(self.client_threaded, (c,f'{addr[0]}:{str(addr[1])}'))
-                    # TODO: make Thread() and then wait for them (join())
+                    threading.Thread(target=self.client_threaded, args=(c, f'{addr[0]}:{str(addr[1])}', self.thread_num)).start()
+                    self.thread_num += 1
                 except timeout:
                     pass
+            else:
+                lprint('[MAIN] killed')
         finally:
             self.s.close()
         signal.signal(signal.SIGINT, self.old_sigint)
         signal.signal(signal.SIGTERM, self.old_sigterm)
-    def client_threaded(self, c, addr):
-        pre = f'[THREAD {addr}]'
+        lprint('[MAIN] exitting...')
+    def client_threaded(self, c, addr, thread_num):
+        pre = f'[THREAD {thread_num}]'
         try:
             c.settimeout(5)
             lprint(pre, 'hello')
@@ -65,8 +68,9 @@ class Server:
                     pass
                 except:
                     c.send(json.dumps({"status":0,"method":"ERR","params":{"msg":traceback.format_exc()},"time":int(time.time())}).encode())
-            c.send(json.dumps({"status":0,"method":"ERR","params":{"msg":"Server is going down..."},"time":int(time.time())}).encode())
-            lprint(f'{pre} server is going down...')
+            else:
+                c.send(json.dumps({"status":0,"method":"ERR","params":{"msg":"Server is going down..."},"time":int(time.time())}).encode())
+                lprint(f'{pre} server is going down...')
         finally:
             c.close()
 
