@@ -50,8 +50,8 @@ cp server9x9.service server9x9updater.service server9x9updater.timer  /etc/syste
 systemctl daemon-reload
 echo -n "Do you want to enable server9x9 (y/n)?"
 check && systemctl enable server9x9
-echo -n "Do you want to enable auto-updater (y/n)?"
-check && systemctl enable server9x9updater.timer
+echo -n "Do you want to enable and start auto-updater (y/n)?"
+check && { systemctl enable server9x9updater.timer; systemctl start server9x9updater.timer; }
 echo -n "Do you want to start server9x9 (y/n)?"
 check && { systemctl start server9x9; systemctl status server9x9; }
 echo "DONE, exitting"
