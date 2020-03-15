@@ -17,30 +17,35 @@ def lint_packet(packet):
         if 'status' in obj:
             if isinstance(obj['status'], int):
                 if obj['status'] != 0:
-                    a('The packet status is not 0, are you OK?')
+                    a('The `status` is not 0, are you OK?')
             else:
-                a('The status is not an integer')
+                a('The `status` is not an integer')
         else:
-            a('The packet does not contain a status')
+            a('The packet does not contain a `status`')
         if 'method' in obj:
             if len(obj['method']) != 3:
-                a('The method does not contain 3 characters')
+                a('The `method` does not contain 3 characters')
             if not obj['method'].isalpha():
-                a('The method is not only letters')
+                a('The `method` is not only letters')
             if not obj['method'].isupper():
-                a('The method is not uppercase')
+                a('The `method` is not uppercase')
         else:
-            return None, 'The packet does not contain a method'
+            return None, 'The packet does not contain a `method`'
+        if 'params' in obj:
+            if not isinstance(obj['params'], dict):
+                return None, 'The packet `params` is not an object'
+        else:
+            return None, 'The packet does not contain `params`'
         if 'time' in obj:
             if isinstance(obj['time'], int):
                 if obj['time'] > time():
-                    a('The packet time is in future')
+                    a('The `time` is in future')
                 if obj['time'] < time()-60:
-                    a('The packet time is later than a minute ago')
+                    a('The `time` is later than a minute ago')
             else:
-                a('The time is not an integer')
+                a('The `time` is not an integer')
         else:
-            a('The packet does not contain time')
+            a('The packet does not contain `time`')
     except json.decoder.JSONDecodeError:
         return None, 'The packet is not valid JSON'
     except:
@@ -85,7 +90,13 @@ class Client:
                     obj, lint = lint_packet(data)
                     if obj:
                         self.send(lint, 'DBG')
-                        self.send('', 'UIN')
+                        if obj['method'] == 'JON':
+                            if 'room' in obj['params']:
+                                self.game.join(self, obj['params']['room'])
+                            else:
+                                self.send('The JON packet does not contain `room`', 'ERR')
+                        else:
+                            self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
                         self.send(lint, 'ERR')
                 except ConnectionResetError:

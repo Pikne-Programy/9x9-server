@@ -27,3 +27,6 @@ class Game:
         self.KILLING = True
         for c in self.clients:
             c.kill()
+
+    def join(self, client, room):
+        pass
