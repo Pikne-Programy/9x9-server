@@ -11,11 +11,23 @@ class Client:
         self.addr = addr
         self.KILLING = False
         self.killed = False
+        self.has_thread = False
 
     def kill(self):
         self.KILLING = True
 
+    def send(self, params, method="DBG", status=0):
+        if isinstance(params, str):
+            params = {'msg': params}
+        obj = {'status': status, 'method': method, 'params': params, 'time': int(time())}
+        obj = json.dumps(obj)
+        obj += '\r\n'
+        obj = obj.encode()
+        self.c.send(obj)
+
     def handler(self, thread_num):
+        assert self.has_thread == False
+        self.has_thread = True
         pre = f'[THREAD {thread_num}]'
         try:
             self.c.settimeout(5)
@@ -28,18 +40,19 @@ class Client:
                         break
                     print(f'{pre} got:\n{data}\nEND')
                     json.loads(data)
-                    self.c.send(json.dumps({"status":0,"method":"UIN","params":{"msg":""},"time":int(time())}).encode())
+                    self.send('', 'UIN')
                 except ConnectionResetError:
                     print(f'{pre} connection was reset')
                     break
                 except timeout:
                     pass
                 except:
-                    self.c.send(json.dumps({"status":0,"method":"ERR","params":{"msg":traceback.format_exc()},"time":int(time())}).encode())
+                    self.send(traceback.format_exc(), 'ERR')
             else:
-                self.c.send(json.dumps({"status":0,"method":"ERR","params":{"msg":"Server is going down..."},"time":int(time())}).encode())
+                self.send('Server is going down...', 'ERR')
                 print(f'{pre} server is going down...')
         finally:
             self.c.close()
             self.killed = True
             self.game.delete(self)
+            self.has_thread = False
