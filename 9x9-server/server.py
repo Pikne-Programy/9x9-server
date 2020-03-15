@@ -73,7 +73,3 @@ class Server:
                 lprint(f'{pre} server is going down...')
         finally:
             c.close()
-
-PORT = 4780
-srv = Server(PORT)
-srv.start()

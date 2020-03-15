@@ -6,7 +6,7 @@ User=server9x9
 WorkingDirectory=/usr/local/lib/9x9-server
 Environment=PYTHONUNBUFFERED=1
 
-ExecStart=/usr/bin/env python3 /usr/local/lib/9x9-server/server.py
+ExecStart=/usr/bin/env python3 -m 9x9-server
 SuccessExitStatus=143
 TimeoutStopSec=10
 Restart=on-failure
