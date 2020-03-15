@@ -4,6 +4,49 @@ import json
 import traceback
 
 
+def lint_packet(packet):
+    warns = ['']
+    def a(err, warns=warns):
+        warns[0] += err + '\n'
+
+    if packet[-2:] != b'\r\n':
+        a('The packet is not ended with \\r\\n')
+    obj = None
+    try:
+        obj = json.loads(packet)
+        if 'status' in obj:
+            if isinstance(obj['status'], int):
+                if obj['status'] != 0:
+                    a('The packet status is not 0, are you OK?')
+            else:
+                a('The status is not an integer')
+        else:
+            a('The packet does not contain a status')
+        if 'method' in obj:
+            if len(obj['method']) != 3:
+                a('The method does not contain 3 characters')
+            if not obj['method'].isalpha():
+                a('The method is not only letters')
+            if not obj['method'].isupper():
+                a('The method is not uppercase')
+        else:
+            return None, 'The packet does not contain a method'
+        if 'time' in obj:
+            if isinstance(obj['time'], int):
+                if obj['time'] > time():
+                    a('The packet time is in future')
+                if obj['time'] < time()-60:
+                    a('The packet time is later than a minute ago')
+            else:
+                a('The time is not an integer')
+        else:
+            a('The packet does not contain time')
+    except json.decoder.JSONDecodeError:
+        return None, 'The packet is not valid JSON'
+    except:
+        return None, traceback.format_exc()
+    return obj, warns[0]
+
 class Client:
     def __init__(self, game, c, addr):
         self.game = game
@@ -39,8 +82,12 @@ class Client:
                         print(pre, 'bye')
                         break
                     print(f'{pre} got:\n{data}\nEND')
-                    json.loads(data)
-                    self.send('', 'UIN')
+                    obj, lint = lint_packet(data)
+                    if obj:
+                        self.send(lint, 'DBG')
+                        self.send('', 'UIN')
+                    else:
+                        self.send(lint, 'ERR')
                 except ConnectionResetError:
                     print(f'{pre} connection was reset')
                     break
