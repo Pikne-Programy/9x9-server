@@ -41,3 +41,6 @@ class Game:
 
     def join(self, client, room):
         sendRandomState(client)
+
+    def set(self, client, x, y):
+        sendRandomState(client)

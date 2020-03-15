@@ -95,6 +95,17 @@ class Client:
                                 self.game.join(self, obj['params']['room'])
                             else:
                                 self.send('The JON packet does not contain `room`', 'ERR')
+                        elif obj['method'] == 'SET':
+                            if 'x' in obj['params'] and 'y' in obj['params']:
+                                if isinstance(obj['params']['x'], int) and isinstance(obj['params']['y'], int):
+                                    if obj['params']['x'] in range(9) and obj['params']['y'] in range(9):
+                                        self.game.set(self, obj['params']['x'], obj['params']['y'])
+                                    else:
+                                        self.send('The `x` and `y` in SET packet should be in range 0..8', 'ERR')
+                                else:
+                                    self.send('The `x` and `y` in SET packet should be integers', 'ERR')
+                            else:
+                                self.send('There should be `x` and `y` in SET packet', 'ERR')
                         else:
                             self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
