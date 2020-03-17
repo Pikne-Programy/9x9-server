@@ -1,5 +1,6 @@
 from socket import timeout
 from time import time
+from threading import Timer
 import json
 import traceback
 
@@ -52,6 +53,8 @@ def lint_packet(packet):
         return None, traceback.format_exc()
     return obj, warns[0]
 
+PING_EVERY = 120
+
 class Client:
     def __init__(self, game, c, addr):
         self.game = game
@@ -60,9 +63,30 @@ class Client:
         self.KILLING = False
         self.killed = False
         self.has_thread = False
+        self.ping_timer = Timer(PING_EVERY, self.pingit)
+        self.ping_timer.start()
+        self.last_ping = -1
+        self.last_pong = -1
+        self.ping = -1
+        self.id = '[ANON]'
+
+    def pingit(self):
+        if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or PING_EVERY < 30):
+            self.ping = -2
+            self.send("I can't measure your ping")
+            print(self.id+'-pinger ping is not possible')
+        self.send({}, 'PNG')
+        self.last_ping = time()
+        self.ping_timer = Timer(PING_EVERY, self.pingit)
+        self.ping_timer.start()
+        if self.KILLING:
+            self.ping_timer.cancel()
 
     def kill(self):
         self.KILLING = True
+        self.ping_timer.cancel()
+        self.ping_timer.join()
+        self.ping_timer.cancel()
 
     def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
@@ -76,17 +100,16 @@ class Client:
     def handler(self, thread_num):
         assert self.has_thread == False
         self.has_thread = True
-        pre = f'[THREAD {thread_num}]'
+        self.id = f'[THREAD {thread_num}]'
         try:
             self.c.settimeout(5)
-            print(pre, 'hello')
+            print(self.id, 'hello')
             while not self.KILLING:
                 try:
                     data = self.c.recv(2048)
                     if not data:
-                        print(pre, 'bye')
-                        break
-                    print(f'{pre} got:\n{data}\nEND')
+                        raise ConnectionResetError('not data')
+                    print(f'{self.id} got:\n{data}\nEND')
                     obj, lint = lint_packet(data)
                     if obj:
                         self.send(lint, 'DBG')
@@ -106,12 +129,18 @@ class Client:
                                     self.send('The `x` and `y` in SET packet should be integers', 'ERR')
                             else:
                                 self.send('There should be `x` and `y` in SET packet', 'ERR')
+                        elif obj['method'] == 'POG':
+                            self.last_pong = time()
+                            self.ping = self.last_pong - self.last_ping
+                            self.send(f"ping={self.ping}")
+                            print(f"{self.id} ping: {self.ping}")
                         else:
                             self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
                         self.send(lint, 'ERR')
-                except ConnectionResetError:
-                    print(f'{pre} connection was reset')
+                except ConnectionResetError as e:
+                    print(f'{self.id} connection was reset:', e if e else None)
+                    self.kill()
                     break
                 except timeout:
                     pass
@@ -119,7 +148,7 @@ class Client:
                     self.send(traceback.format_exc(), 'ERR')
             else:
                 self.send('Server is going down...', 'ERR')
-                print(f'{pre} server is going down...')
+                print(f'{self.id} server is going down...')
         finally:
             self.c.close()
             self.killed = True
