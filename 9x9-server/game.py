@@ -1,20 +1,27 @@
 from threading import Lock
+from .room import Room
+
 
 import random
+
+
 def sendRandomState(c):
     # TODO: it's temporary of course and it is there only for testing
     c.send({
-        "board": ''.join([random.choice(['X','O']+['-']*5) for i in range(9*9)]),
-        "bigBoard": ''.join([random.choice(['X','O']+['-']*8) for i in range(9)]),
-        "whoWon": random.choice(['X','O']+['-']*30),
-        "you": random.choice(['X','O']),
-        "move": random.choice(['X','O']),
-        "marked": random.randint(-1,8)
+        "board": ''.join([random.choice(['X', 'O']+['-']*5) for i in range(9*9)]),
+        "bigBoard": ''.join([random.choice(['X', 'O']+['-']*8) for i in range(9)]),
+        "whoWon": random.choice(['X', 'O']+['-']*30),
+        "you": random.choice(['X', 'O']),
+        "move": random.choice(['X', 'O']),
+        "marked": random.randint(-1, 8)
     }, 'STT')
+
 
 class Game:
     def __init__(self):
         self.clients = []
+        self.rooms = []
+        self.emptyRooms = []
         self.lock = Lock()
 
     def __del__(self):
@@ -40,7 +47,26 @@ class Game:
             c.kill()
 
     def join(self, client, room):
-        sendRandomState(client)
+        if len(self.emptyRooms) == 0:
+            r = Room(self, len(self.rooms))
+            self.rooms.append(r)
+            self.emptyRooms.append(r)
+        self.emptyRooms[0].Connect(client)
+        client.roomId = self.emptyRooms[0].id
+
+        if len(self.emptyRooms[0].clients) == 2:
+            self.emptyRooms.pop(0)
+        # sendRandomState(client)
 
     def set(self, client, x, y):
-        sendRandomState(client)
+        print(client.roomId)
+        room = self.rooms[client.roomId]
+        if not room.ready:
+            return
+
+        if room.clients[room.curMove] != client:
+            return
+
+        room.Move(x, y)
+
+        # sendRandomState(client)

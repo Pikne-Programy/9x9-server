@@ -6,6 +6,7 @@ import traceback
 
 def lint_packet(packet):
     warns = ['']
+
     def a(err, warns=warns):
         warns[0] += err + '\n'
 
@@ -52,9 +53,11 @@ def lint_packet(packet):
         return None, traceback.format_exc()
     return obj, warns[0]
 
+
 class Client:
     def __init__(self, game, c, addr):
         self.game = game
+        self.roomId = -1
         self.c = c
         self.addr = addr
         self.KILLING = False
@@ -101,9 +104,11 @@ class Client:
                                     if obj['params']['x'] in range(9) and obj['params']['y'] in range(9):
                                         self.game.set(self, obj['params']['x'], obj['params']['y'])
                                     else:
-                                        self.send('The `x` and `y` in SET packet should be in range 0..8', 'ERR')
+                                        self.send(
+                                            'The `x` and `y` in SET packet should be in range 0..8', 'ERR')
                                 else:
-                                    self.send('The `x` and `y` in SET packet should be integers', 'ERR')
+                                    self.send(
+                                        'The `x` and `y` in SET packet should be integers', 'ERR')
                             else:
                                 self.send('There should be `x` and `y` in SET packet', 'ERR')
                         else:
