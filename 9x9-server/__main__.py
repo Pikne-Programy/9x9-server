@@ -5,12 +5,14 @@ import pathlib
 from .server import Server
 
 config_path = pathlib.Path(__file__).parent.parent
-def get_config_path(name):
+def get_repo_path(name):
     return config_path.joinpath(name).absolute()
-config = configparser.ConfigParser()
-config.read([get_config_path(name) for name in ('9x9-server-default.conf', '9x9-server.conf')])
+config = configparser.ConfigParser(allow_no_value=True)
+config.read([get_repo_path(name) for name in ('9x9-server-default.conf', '9x9-server.conf')])
 
 PORT = config['9x9-server'].getint('PORT')
+THE_SECRET_COMMAND_UPDATING = config['9x9-server'].get('THE SECRET COMMAND UPDATING')
 print(f'Starting 9x9-server at {PORT}...')
-srv = Server(PORT)
+print(f"The updating command is {'on' if THE_SECRET_COMMAND_UPDATING else 'off'}.")
+srv = Server(PORT, updating_command=THE_SECRET_COMMAND_UPDATING, update_cmd='sudo /bin/systemctl start server9x9updater.service'.split(' '))
 srv.start()
