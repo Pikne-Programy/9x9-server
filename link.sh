@@ -39,6 +39,8 @@ if ! [ "`pwd`" = "$systemwide" ]; then
 %server9x9 ALL= NOPASSWD: /bin/systemctl start server9x9
 %server9x9 ALL= NOPASSWD: /bin/systemctl stop server9x9
 %server9x9 ALL= NOPASSWD: /bin/systemctl status server9x9
+%server9x9 ALL= NOPASSWD: /bin/systemctl restart server9x9
+%server9x9 ALL= NOPASSWD: /bin/systemctl start server9x9updater.service
 EOT
   echo "falling to system-wide link.sh"
   cd "$systemwide"

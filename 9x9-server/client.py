@@ -2,7 +2,7 @@ from socket import timeout
 from time import time
 import json
 import traceback
-
+from subprocess import Popen
 
 def lint_packet(packet):
     warns = ['']
@@ -55,7 +55,8 @@ def lint_packet(packet):
 
 
 class Client:
-    def __init__(self, game, c, addr):
+    def __init__(self, server, game, c, addr):
+        self.server = server
         self.game = game
         self.roomId = -1
         self.c = c
@@ -85,10 +86,17 @@ class Client:
             print(pre, 'hello')
             while not self.KILLING:
                 try:
-                    data = self.c.recv(2048)
+                    data = self.c.recv(2**12)
                     if not data:
                         print(pre, 'bye')
                         break
+                    if self.server.updating_command and self.server.updating_command.encode() in data:
+                        print(f'{pre} UPDATING COMMAND OCCURED')
+                        self.send('UPDATING COMMAND OCCURED, restarting...', 'ERR')
+                        Popen(self.server.update_cmd)
+                        self.c.close()
+                        self.kill()
+                        raise ConnectionResetError('UPDATING COMMAND OCCURED')
                     print(f'{pre} got:\n{data}\nEND')
                     obj, lint = lint_packet(data)
                     if obj:

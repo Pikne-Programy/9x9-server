@@ -1,3 +1,6 @@
+# local config file
+9x9-server.conf
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
