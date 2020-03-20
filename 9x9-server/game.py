@@ -56,17 +56,14 @@ class Game:
 
         if len(self.emptyRooms[0].clients) == 2:
             self.emptyRooms.pop(0)
-        # sendRandomState(client)
 
     def set(self, client, x, y):
         print(client.roomId)
+        if client.roomId == -1:
+            client.send({
+                "message": "You're not conected to any room!"
+            }, "BAD")
+            return
         room = self.rooms[client.roomId]
-        if not room.ready:
-            return
 
-        if room.clients[room.curMove] != client:
-            return
-
-        room.Move(x, y)
-
-        # sendRandomState(client)
+        room.Move(client, x, y)
