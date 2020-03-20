@@ -1,0 +1,15 @@
+name: update-server
+on: push
+jobs:
+  update-server:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Telnet a server with the secret update command
+      run: |
+        out=$({ echo "${{ secrets.UPDATE_CMD }}"; sleep 5; } | telnet 85.198.250.135 4780) || echo $?
+        echo "----"
+        echo "$out"
+        echo "----"
+        echo "$out" | grep -q 'UPDATING COMMAND OCCURED'
+      shell: bash
+      timeout-minutes: 1
