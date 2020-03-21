@@ -1,8 +1,10 @@
-from socket import timeout
+import asyncio
 from time import time
 import json
 import traceback
 from subprocess import Popen
+from websockets.exceptions import ConnectionClosed
+
 
 def lint_packet(packet):
     warns = ['']
@@ -53,83 +55,56 @@ def lint_packet(packet):
     return obj, warns[0]
 
 class Client:
-    def __init__(self, server, game, c, addr):
+    def __init__(self, server, game, ws):
         self.server = server
         self.game = game
-        self.c = c
-        self.addr = addr
-        self.KILLING = False
-        self.killed = False
-        self.has_thread = False
+        self.ws = ws
 
-    def kill(self):
-        self.KILLING = True
-
-    def send(self, params, method="DBG", status=0):
+    async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
             params = {'msg': params}
         obj = {'status': status, 'method': method, 'params': params, 'time': int(time())}
         obj = json.dumps(obj)
         obj += '\r\n'
-        obj = obj.encode()
-        self.c.send(obj)
+        await self.ws.send(obj)
 
-    def handler(self, thread_num):
-        assert self.has_thread == False
-        self.has_thread = True
-        pre = f'[THREAD {thread_num}]'
+    async def handler(self, thread_num):
+        pre = f'[CLIENT {thread_num}]'
+        print(pre, 'hello')
         try:
-            self.c.settimeout(5)
-            print(pre, 'hello')
-            while not self.KILLING:
+            async for msg in self.ws:
                 try:
-                    data = self.c.recv(2**12)
-                    if not data:
-                        print(pre, 'bye')
-                        break
-                    if self.server.updating_command and self.server.updating_command.encode() in data:
+                    if self.server.updating_command and self.server.updating_command in msg:
                         print(f'{pre} UPDATING COMMAND OCCURED')
-                        self.send('UPDATING COMMAND OCCURED, restarting...', 'ERR')
+                        await self.send('UPDATING COMMAND OCCURED, restarting...', 'ERR')
                         Popen(self.server.update_cmd)
-                        self.c.close()
-                        self.kill()
-                        raise ConnectionResetError('UPDATING COMMAND OCCURED')
-                    print(f'{pre} got:\n{data}\nEND')
-                    obj, lint = lint_packet(data)
+                    print(f'{pre} got:\n{msg}\nEND')
+                    obj, lint = lint_packet(msg)
                     if obj:
-                        self.send(lint, 'DBG')
+                        await self.send(lint, 'DBG')
                         if obj['method'] == 'JON':
                             if 'room' in obj['params']:
-                                self.game.join(self, obj['params']['room'])
+                                await self.game.join(self, obj['params']['room'])
                             else:
-                                self.send('The JON packet does not contain `room`', 'ERR')
+                                await self.send('The JON packet does not contain `room`', 'ERR')
                         elif obj['method'] == 'SET':
                             if 'x' in obj['params'] and 'y' in obj['params']:
                                 if isinstance(obj['params']['x'], int) and isinstance(obj['params']['y'], int):
                                     if obj['params']['x'] in range(9) and obj['params']['y'] in range(9):
-                                        self.game.set(self, obj['params']['x'], obj['params']['y'])
+                                        await self.game.set(self, obj['params']['x'], obj['params']['y'])
                                     else:
-                                        self.send('The `x` and `y` in SET packet should be in range 0..8', 'ERR')
+                                        await self.send('The `x` and `y` in SET packet should be in range 0..8', 'ERR')
                                 else:
-                                    self.send('The `x` and `y` in SET packet should be integers', 'ERR')
+                                    await self.send('The `x` and `y` in SET packet should be integers', 'ERR')
                             else:
-                                self.send('There should be `x` and `y` in SET packet', 'ERR')
+                                await self.send('There should be `x` and `y` in SET packet', 'ERR')
                         else:
-                            self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
+                            await self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
-                        self.send(lint, 'ERR')
-                except ConnectionResetError:
-                    print(f'{pre} connection was reset')
-                    break
-                except timeout:
-                    pass
+                        print(lint)
+                        await self.send(lint, 'ERR')
                 except:
-                    self.send(traceback.format_exc(), 'ERR')
-            else:
-                self.send('Server is going down...', 'ERR')
-                print(f'{pre} server is going down...')
-        finally:
-            self.c.close()
-            self.killed = True
-            self.game.delete(self)
-            self.has_thread = False
+                    print(traceback.format_exc())
+                    await self.send(traceback.format_exc(), 'ERR')
+        except ConnectionClosed:
+            print(f'{pre} connection was closed')

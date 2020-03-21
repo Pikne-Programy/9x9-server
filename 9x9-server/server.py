@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, timeout
-from threading import Thread
-from signal import signal, SIGINT, SIGTERM
-import json
+import asyncio
+import websockets
 
 from .client import Client
 from .game import Game
@@ -12,7 +10,6 @@ from .game import Game
 class Server:
     def __init__(self, port, updating_command=None, update_cmd=None):
         self.port = port
-        self.KILLING = False
         self.thread_num = 1
         self.game = Game()
         if updating_command and not update_cmd:
@@ -20,33 +17,13 @@ class Server:
         self.updating_command = updating_command
         self.update_cmd = update_cmd
 
-    def _handler(self, signum, frame):
-        print(f'[SIGNAL] Killing by {signum}')
-        self.KILLING = True
-        self.game.kill()
+    async def caught(self, ws, path):
+        cc = Client(self, self.game, ws)
+        self.game.add(cc)
+        self.thread_num += 1
+        await cc.handler(self.thread_num)
 
     def start(self):
-        self.old_sigint = signal(SIGINT, self._handler)
-        self.old_sigterm = signal(SIGTERM, self._handler)
-        self.s = socket(AF_INET,SOCK_STREAM)
-        self.s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self.s.bind(('', self.port))
-        self.s.listen(5)
-        self.s.settimeout(5)
-        try:
-            while not self.KILLING:
-                try:
-                    (c, addr) = self.s.accept()
-                    cc = Client(self, self.game, c, f'{addr[0]}:{str(addr[1])}')
-                    Thread(target=cc.handler, args=(self.thread_num,)).start()
-                    self.game.add(cc)
-                    self.thread_num += 1
-                except timeout:
-                    pass
-            else:
-                print('[MAIN] killed')
-        finally:
-            self.s.close()
-        signal(SIGINT, self.old_sigint)
-        signal(SIGTERM, self.old_sigterm)
-        print('[MAIN] exitting...')
+        start_server = websockets.serve(self.caught, "", self.port)
+        asyncio.get_event_loop().run_until_complete(start_server)
+        asyncio.get_event_loop().run_forever()
