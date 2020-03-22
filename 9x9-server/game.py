@@ -56,7 +56,7 @@ class Game:
             finally:
                 r.Connect(client)
                 if len(r.clients) == 2:
-                    del self.privateRooms["room"]
+                    del self.privateRooms[room]
 
         client.room = r
 
