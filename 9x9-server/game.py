@@ -1,20 +1,7 @@
 from threading import Lock
 from .room import Room
 
-
 import random
-
-
-def sendRandomState(c):
-    # TODO: it's temporary of course and it is there only for testing
-    c.send({
-        "board": ''.join([random.choice(['X', 'O']+['-']*5) for i in range(9*9)]),
-        "bigBoard": ''.join([random.choice(['X', 'O']+['-']*8) for i in range(9)]),
-        "whoWon": random.choice(['X', 'O']+['-']*30),
-        "you": random.choice(['X', 'O']),
-        "move": random.choice(['X', 'O']),
-        "marked": random.randint(-1, 8)
-    }, 'STT')
 
 
 class Game:

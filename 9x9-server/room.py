@@ -1,12 +1,6 @@
 import time
 
 
-def SendClientMessage(client, message, type):
-    client.send({
-        "msg": message
-    }, type)
-
-
 class Room:
     def __init__(self, game, id):
         self.board = [[-1 for x in range(9)] for y in range(9)]
@@ -30,24 +24,22 @@ class Room:
 
     def Start(self):
         self.ready = True
-        for c in self.clients:
-            SendClientMessage(c, "connected\n", 'DBG')
+        self.SendSTTMessage()
 
     def Move(self, client, x, y):
         if not self.ready:
-            SendClientMessage(
-                client, "There are not enough players to start the game!\n", "BAD")
+            client.send({"msg": "There are not enough players to start the game!\n"}, "BAD")
             return
         if self.clients[self.curMove] != client:
-            SendClientMessage(client, "It isn't your move!\n", "BAD")
+            client.send({"msg": "It isn't your move!\n"}, "BAD")
             return
         if self.board[x][y] != -1:
-            SendClientMessage(client, "This square is not empty! \n", "BAD")
+            client.send({"msg": "This square is not empty!\n"}, "BAD")
             return
 
         curSquare = 3*int(y/3) + int(x/3)
-        if self.marked != curSquare and self.marked != -1:
-            SendClientMessage(client, "Yor move is in wrong big square! \n", "BAD")
+        if (self.marked != curSquare and self.marked != -1) or self.boardBig[curSquare % 3][int(curSquare/3)] != -1:
+            client.send({"msg": "Yor move is in wrong big square!\n"}, "BAD")
             return
 
         self.board[x][y] = self.curMove
@@ -59,9 +51,11 @@ class Room:
         if self.Check(b):
             self.boardBig[curSquare % 3][int(curSquare/3)] = self.curMove
             if self.Check(self.boardBig):
-                self.winner = curMove
+                self.winner = self.curMove
 
         self.marked = 3*(y % 3) + x % 3
+        if self.boardBig[self.marked % 3][int(self.marked/3)] != -1:
+            self.marked = -1
         self.curMove = (self.curMove+1) % 2
         self.SendSTTMessage()
 
@@ -84,18 +78,13 @@ class Room:
                 you = character[1]
 
             c.send({
-                "status": 0,
-                "method": "STT",
-                "params": {
-                    "board": sBoard,
-                    "bigBoard": sBoardBig,
-                    "whoWon":  character[self.winner],
-                    "you": you,
-                    "move": character[self.curMove],
-                    "marked": self.marked
-                },
-                "time": int(time.time())
-            })
+                "board": sBoard,
+                "bigBoard": sBoardBig,
+                "whoWon":  character[self.winner],
+                "you": you,
+                "move": character[self.curMove],
+                "marked": self.marked
+            }, 'STT')
 
     def Check(self, b):
         for x1 in range(3):
