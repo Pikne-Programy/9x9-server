@@ -7,8 +7,8 @@ import random
 class Game:
     def __init__(self):
         self.clients = []
-        self.rooms = []
         self.emptyRooms = []
+        self.privateRooms = {}
         self.lock = Lock()
 
     def __del__(self):
@@ -20,6 +20,9 @@ class Game:
         self.lock.release()
 
     def delete(self, client):
+        if client.room != None:
+            client.room.PlayerDisconnected(client)
+
         self.lock.acquire()
         if client in self.clients:
             self.clients.remove(client)
@@ -34,23 +37,35 @@ class Game:
             c.kill()
 
     def join(self, client, room):
-        if len(self.emptyRooms) == 0:
-            r = Room(self, len(self.rooms))
-            self.rooms.append(r)
-            self.emptyRooms.append(r)
-        self.emptyRooms[0].Connect(client)
-        client.roomId = self.emptyRooms[0].id
+        if room == "public":
+            if len(self.emptyRooms) == 0:
+                r = Room()
+                self.emptyRooms.append(r)
+            else:
+                r = self.emptyRooms[0]
 
-        if len(self.emptyRooms[0].clients) == 2:
-            self.emptyRooms.pop(0)
+            r.Connect(client)
+            if len(r.clients) == 2:
+                self.emptyRooms.pop(0)
+        else:
+            try:
+                r = self.privateRooms[room]
+            except KeyError:
+                r = Room()
+                self.privateRooms[room] = r
+            finally:
+                r.Connect(client)
+                if len(r.clients) == 2:
+                    del self.privateRooms["room"]
+
+        client.room = r
 
     def set(self, client, x, y):
-        print(client.roomId)
-        if client.roomId == -1:
+        if client.room == None:
             client.send({
                 "message": "You're not conected to any room!"
             }, "BAD")
             return
-        room = self.rooms[client.roomId]
+        room = client.room
 
         room.Move(client, x, y)

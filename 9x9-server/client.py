@@ -4,6 +4,7 @@ import json
 import traceback
 from subprocess import Popen
 
+
 def lint_packet(packet):
     warns = ['']
 
@@ -58,7 +59,7 @@ class Client:
     def __init__(self, server, game, c, addr):
         self.server = server
         self.game = game
-        self.roomId = -1
+        self.room = None
         self.c = c
         self.addr = addr
         self.KILLING = False

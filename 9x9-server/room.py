@@ -2,12 +2,10 @@ import time
 
 
 class Room:
-    def __init__(self, game, id):
+    def __init__(self):
         self.board = [[-1 for x in range(9)] for y in range(9)]
         self.boardBig = [[-1 for x in range(3)] for y in range(3)]
         self.clients = []
-        self.game = game
-        self.id = id
         self.curMove = 0
         self.marked = -1
         self.ready = False
@@ -72,6 +70,8 @@ class Room:
                 sBoardBig += character[self.boardBig[x][y]]
 
         for c in self.clients:
+            if c == None:
+                continue
             if c == self.clients[0]:
                 you = character[0]
             else:
@@ -96,3 +96,15 @@ class Room:
         if (b[0][0] == b[1][1] and b[1][1] == b[2][2] and b[2][2] == self.curMove) or \
                 (b[0][2] == b[1][1] and b[1][1] == b[2][0] and b[2][0] == self.curMove):
             return True
+
+    def PlayerDisconnected(self, client):
+        if self.clients[0] == client:
+            self.winner = 1
+            self.clients[0] = None
+            if len(self.clients) == 2:
+                self.clients[1].room = None
+        else:
+            self.winner = 0
+            self.clients[1] = None
+            self.clients[0].room = None
+        self.SendSTTMessage()
