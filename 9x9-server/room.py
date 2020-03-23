@@ -87,6 +87,15 @@ class Room:
                 "marked": self.marked
             }, 'STT')
 
+        print({
+            "board": sBoard,
+            "bigBoard": sBoardBig,
+            "whoWon":  character[self.winner],
+            "you": you,
+            "move": character[self.curMove],
+            "marked": self.marked
+        })
+
     def Check(self, b):
         for x1 in range(3):
             if b[0][x1] == b[1][x1] and b[1][x1] == b[2][x1] and b[2][x1] == self.curMove:
