@@ -2,7 +2,8 @@ import time
 
 
 class Room:
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.board = [[-1 for x in range(9)] for y in range(9)]
         self.boardBig = [[-1 for x in range(3)] for y in range(3)]
         self.clients = []
@@ -98,6 +99,8 @@ class Room:
             return True
 
     def PlayerDisconnected(self, client):
+        if self.ready != True:
+            return
         if self.clients[0] == client:
             self.winner = 1
             self.clients[0] = None

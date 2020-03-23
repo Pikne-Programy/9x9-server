@@ -7,7 +7,7 @@ import random
 class Game:
     def __init__(self):
         self.clients = []
-        self.emptyRooms = []
+        self.publicRooms = []
         self.privateRooms = {}
         self.lock = Lock()
 
@@ -21,7 +21,15 @@ class Game:
 
     def delete(self, client):
         if client.room != None:
-            client.room.PlayerDisconnected(client)
+            try:
+                if client.room.name == "public":
+                    self.publicRooms.remove(client.room)
+                else:
+                    del self.privateRooms[client.room.name]
+            except (ValueError, KeyError):
+                pass
+            finally:
+                client.room.PlayerDisconnected(client)
 
         self.lock.acquire()
         if client in self.clients:
@@ -38,25 +46,23 @@ class Game:
 
     def join(self, client, room):
         if room == "public":
-            if len(self.emptyRooms) == 0:
-                r = Room()
-                self.emptyRooms.append(r)
+            if len(self.publicRooms) == 0 or len(self.publicRooms[0].clients) == 2:
+                r = Room(room)
+                self.publicRooms.insert(0, r)
             else:
-                r = self.emptyRooms[0]
+                r = self.publicRooms[0]
 
             r.Connect(client)
             if len(r.clients) == 2:
-                self.emptyRooms.pop(0)
+                self.publicRooms.insert(0, self.publicRooms.pop(0))
         else:
             try:
                 r = self.privateRooms[room]
             except KeyError:
-                r = Room()
+                r = Room(room)
                 self.privateRooms[room] = r
             finally:
                 r.Connect(client)
-                if len(r.clients) == 2:
-                    del self.privateRooms[room]
 
         client.room = r
 
