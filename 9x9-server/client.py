@@ -2,6 +2,7 @@ from time import time
 import json
 import traceback
 from subprocess import Popen
+from asyncio import CancelledError
 from websockets.exceptions import ConnectionClosed
 
 
@@ -54,10 +55,12 @@ def lint_packet(packet):
     return obj, warns[0]
 
 class Client:
-    def __init__(self, server, game, ws):
+    def __init__(self, server, game, ws, client_id):
         self.server = server
         self.game = game
         self.ws = ws
+        self.client_id = client_id
+        self.pre = f'[CLIENT {client_id}]'
 
     async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
@@ -67,17 +70,23 @@ class Client:
         obj += '\r\n'
         await self.ws.send(obj)
 
-    async def handler(self, thread_num):
-        pre = f'[CLIENT {thread_num}]'
-        print(pre, 'hello')
+    async def kill(self, msg):
+        print(f'{self.pre} Disconnecting')
+        await self.send('The server is going down...', 'ERR')
+        print(f'{self.pre} The server is going down...')
+        await self.ws.close()
+        self.game.delete(self)
+
+    async def handler(self):
+        print(f'{self.pre} hello')
         try:
             async for msg in self.ws:
                 try:
                     if self.server.updating_command and self.server.updating_command in msg:
-                        print(f'{pre} UPDATING COMMAND OCCURED')
+                        print(f'{self.pre} UPDATING COMMAND OCCURED')
                         await self.send('UPDATING COMMAND OCCURED, restarting...', 'ERR')
                         Popen(self.server.update_cmd)
-                    print(f'{pre} got:\n{msg}\nEND')
+                    print(f'{self.pre} got:\n{msg}\nEND')
                     obj, lint = lint_packet(msg)
                     if obj:
                         await self.send(lint, 'DBG')
@@ -102,8 +111,11 @@ class Client:
                     else:
                         print(lint)
                         await self.send(lint, 'ERR')
+                except CancelledError:
+                    break
                 except:
                     print(traceback.format_exc())
                     await self.send(traceback.format_exc(), 'ERR')
         except ConnectionClosed:
-            print(f'{pre} connection was closed')
+            print(f'{self.pre} connection was closed')
+        print(f'{self.pre} bye')

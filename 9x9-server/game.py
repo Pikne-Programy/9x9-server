@@ -15,11 +15,13 @@ async def sendRandomState(c):
 class Game:
     def __init__(self):
         self.clients = []
+        self.killed = False
 
     def __del__(self):
-        assert len(self.clients) == 0
+        assert not self.clients
 
     def add(self, client):
+        assert not self.killed
         self.clients += [client]
 
     def delete(self, client):
@@ -33,3 +35,10 @@ class Game:
 
     async def set(self, client, x, y):
         await sendRandomState(client)
+
+    async def kill(self, msg='The server is going down...'):
+        print('[GAME] killing')
+        self.killed = True
+        [await client.kill(msg) for client in self.clients]
+        assert not self.clients
+        print('[GAME] killed')

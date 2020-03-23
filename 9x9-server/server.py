@@ -11,7 +11,7 @@ from .game import Game
 class Server:
     def __init__(self, port, updating_command=None, update_cmd=None):
         self.port = port
-        self.thread_num = 1
+        self.client_id = 1
         self.game = Game()
         if updating_command and not update_cmd:
             raise ValueError('update_cmd not specified')
@@ -19,15 +19,23 @@ class Server:
         self.update_cmd = update_cmd
 
     async def caught(self, ws, path):
-        cc = Client(self, self.game, ws)
+        cc = Client(self, self.game, ws, self.client_id)
+        self.client_id += 1
         self.game.add(cc)
-        self.thread_num += 1
-        await cc.handler(self.thread_num)
+        await cc.handler()
 
-    async def shutdown(self, sig):
+    async def shutdown(self, sig=None):
+        if sig:
+            print(f'[SIGNAL] Got {sig}, closing connections...')
+        await self.game.kill()
         tasks = [t for t in all_tasks() if t is not current_task()]
         [task.cancel() for task in tasks]
-        await gather(*tasks)
+        print(f'[SIGNAL] Cancelling tasks...')
+        results = await gather(*tasks, return_exceptions=True)
+        for r in results:
+            if isinstance(r, Exception):
+                print(f'[SIGNAL] Got exception: {r}')
+        print(f'[SIGNAL] Stopping...')
         loop().stop()
 
     def start(self):
