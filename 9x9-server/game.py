@@ -1,21 +1,12 @@
-import random
+from .room import Room
 
-
-async def sendRandomState(c):
-    # TODO: it's temporary of course and it is there only for testing
-    await c.send({
-        "board": ''.join([random.choice(['X','O']+['-']*5) for i in range(9*9)]),
-        "bigBoard": ''.join([random.choice(['X','O']+['-']*8) for i in range(9)]),
-        "whoWon": random.choice(['X','O']+['-']*30),
-        "you": random.choice(['X','O']),
-        "move": random.choice(['X','O']),
-        "marked": random.randint(-1,8)
-    }, 'STT')
 
 class Game:
     def __init__(self):
         self.clients = []
         self.killed = False
+        self.publicRooms = []
+        self.privateRooms = {}
 
     def __del__(self):
         assert not self.clients
@@ -24,17 +15,21 @@ class Game:
         assert not self.killed
         self.clients += [client]
 
-    def delete(self, client):
+    async def delete(self, client):
+        if client.room != None:
+            try:
+                if client.room.name == "public":
+                    self.publicRooms.remove(client.room)
+                else:
+                    del self.privateRooms[client.room.name]
+            except (ValueError, KeyError):
+                pass
+            finally:
+                await client.room.PlayerDisconnected(client)
         if client in self.clients:
             self.clients.remove(client)
         else:
             raise ValueError(client, 'not in clients')
-
-    async def join(self, client, room):
-        await sendRandomState(client)
-
-    async def set(self, client, x, y):
-        await sendRandomState(client)
 
     async def kill(self, msg='The server is going down...'):
         print('[GAME] killing')
@@ -42,3 +37,35 @@ class Game:
         [await client.kill(msg) for client in self.clients]
         assert not self.clients
         print('[GAME] killed')
+
+    async def join(self, client, room):
+        if room == "public":
+            if len(self.publicRooms) == 0 or len(self.publicRooms[0].clients) == 2:
+                r = Room(room)
+                self.publicRooms.insert(0, r)
+            else:
+                r = self.publicRooms[0]
+
+            await r.Connect(client)
+            if len(r.clients) == 2:
+                self.publicRooms.insert(0, self.publicRooms.pop(0))
+        else:
+            try:
+                r = self.privateRooms[room]
+            except KeyError:
+                r = Room(room)
+                self.privateRooms[room] = r
+            finally:
+                await r.Connect(client)
+
+        client.room = r
+
+    async def set(self, client, x, y):
+        if client.room == None:
+            await client.send({
+                "message": "You're not conected to any room!"
+            }, "BAD")
+            return
+        room = client.room
+
+        await room.Move(client, x, y)

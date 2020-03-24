@@ -6,8 +6,10 @@ from asyncio import CancelledError
 from websockets.exceptions import ConnectionClosed
 
 
+
 def lint_packet(packet):
     warns = ['']
+
     def a(err, warns=warns):
         warns[0] += err + '\n'
 
@@ -54,6 +56,7 @@ def lint_packet(packet):
         return None, traceback.format_exc()
     return obj, warns[0]
 
+
 class Client:
     def __init__(self, server, game, ws, client_id):
         self.server = server
@@ -61,6 +64,7 @@ class Client:
         self.ws = ws
         self.client_id = client_id
         self.pre = f'[CLIENT {client_id}]'
+        self.room = None
 
     async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
