@@ -11,6 +11,9 @@ class Room:
         self.marked = -1
         self.ready = False
         self.winner = -1
+        self.ended = False
+        self.lastMove = [-1, -1]
+        self.emptySquares = 81
 
     async def Connect(self, client):
         if len(self.clients) == 2:
@@ -29,6 +32,9 @@ class Room:
         if not self.ready:
             await client.send({"msg": "There are not enough players to start the game!\n"}, "BAD")
             return
+        if self.ended:
+            await client.send({"msg": "The game is over!\n"}, "BAD")
+            return
         if self.clients[self.curMove] != client:
             await client.send({"msg": "It isn't your move!\n"}, "BAD")
             return
@@ -42,6 +48,7 @@ class Room:
             return
 
         self.board[x][y] = self.curMove
+        self.emptySquares -= 1
 
         topLeftX = 3*int(x/3)
         topLeftY = 3*int(y/3)
@@ -51,11 +58,15 @@ class Room:
             self.boardBig[curSquare % 3][int(curSquare/3)] = self.curMove
             if self.Check(self.boardBig):
                 self.winner = self.curMove
+                self.ended = True
+        if self.emptySquares == 0:
+            self.ended = True
 
         self.marked = 3*(y % 3) + x % 3
         if self.boardBig[self.marked % 3][int(self.marked/3)] != -1:
             self.marked = -1
         self.curMove = (self.curMove+1) % 2
+        self.lastMove = [x, y]
         await self.SendSTTMessage()
 
     async def SendSTTMessage(self):
@@ -81,18 +92,28 @@ class Room:
             await c.send({
                 "board": sBoard,
                 "bigBoard": sBoardBig,
+                "isEnded": self.ended,
                 "whoWon":  character[self.winner],
                 "you": you,
                 "move": character[self.curMove],
+                "lastMove": {
+                    "x": self.lastMove[0],
+                    "y": self.lastMove[1]
+                },
                 "marked": self.marked
             }, 'STT')
 
         print({
             "board": sBoard,
             "bigBoard": sBoardBig,
+            "isEnded": self.ended,
             "whoWon":  character[self.winner],
             "you": you,
             "move": character[self.curMove],
+            "lastMove": {
+                "x": self.lastMove[0],
+                "y": self.lastMove[1]
+            },
             "marked": self.marked
         })
 
@@ -119,4 +140,5 @@ class Room:
             self.winner = 0
             self.clients[1] = None
             self.clients[0].room = None
+        self.ended = True
         await self.SendSTTMessage()
