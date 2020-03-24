@@ -1,4 +1,4 @@
-# 9x9 Protocol v0.1.1
+# 9x9 Protocol v0.2
 
 ## Table of Contents
 
@@ -98,9 +98,13 @@ the info about the room and the board
    so the second char of `board` is a field with x=1 and y=0
  - `bigBoard` (string) - the string with the big board (the wins on subboards (3x3 boards)), next rows of the board, made of ASCII characters: 'X', 'O', '-'\
    so the second char of `bigBoard` represents the subboard which would be marked with 1 (see `marked`)
+ - `isEnded` (boolean) - is the game ended (someone won, there was a draw or someone surrender)
  - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"` or `"O"`)
  - `you` (string) - your mark (e. g. `"X"` or `"O"`)
  - `move` (string) - whose turn is it (e. g. `"X"` or `"O"`)
+ - `lastMove` (object) - in which field the last mark was placed
+     - `x` (integer) -  the x coordinate of the field
+     - `y` (integer) -  the y coordinate of the field
  - `marked` (integer) - the marked subboard (so that where should be next move done);
    ```
     012
@@ -118,12 +122,17 @@ e. g.
     "params": {
         "board": "XO-XO-----O-X------O-X------O-X---------------------------X----------------------",
         "bigBoard": "OX-------",
+        "isEnded": false,
         "whoWon": "-",
         "you": "X",
         "move": "O",
+        "lastMove": {
+            "x": 3,
+            "y": 2
+        },
         "marked": 6
     },
-    "time": 1584087848
+    "time": 1585054444
 }
 ```
 
@@ -146,7 +155,7 @@ There can be no GET packet sent and the client can receive the STT packet. Usual
 
 the request of making a move, placing a mark in the specific field
  - `x` (integer) -  the x coordinate of the field
- - `y` (integer)-  the y coordinate of the field
+ - `y` (integer) -  the y coordinate of the field
 
    | # x<br>y | 012<br>&nbsp; | 345<br>&nbsp; | 678<br>&nbsp; |
    | :- | --- | --- | --- |
@@ -225,7 +234,7 @@ e. g.
         "author": "Pikne-Programy",
         "version": "v0.0.0.1",
         "fullName": "tic-tac-toe-9x9-mobile\nv0.0.0.1\nhttps://github.com/Pikne-Programy/tic-tac-toe-9x9-mobile",
-        "protocolVersion": "v0.1.1",
+        "protocolVersion": "v0.2",
         "nick": "NIRCEK_2103",
         "fullNick": "Nircek (Marcin Zepp)"
     },
