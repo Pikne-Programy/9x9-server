@@ -134,6 +134,9 @@ class Client:
                             self.ping = self.last_pong - self.last_ping
                             self.send(f"ping={self.ping}")
                             print(f"{self.id} ping: {self.ping}")
+                        elif obj['method'] == 'PNG':
+                            print(f'{self.id} being pinged')
+                            self.send({}, 'POG')
                         else:
                             self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
