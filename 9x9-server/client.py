@@ -3,10 +3,11 @@ from time import time
 from threading import Timer
 import json
 import traceback
-
+from subprocess import Popen
 
 def lint_packet(packet):
     warns = ['']
+
     def a(err, warns=warns):
         warns[0] += err + '\n'
 
@@ -56,8 +57,10 @@ def lint_packet(packet):
 PING_EVERY = 120
 
 class Client:
-    def __init__(self, game, c, addr):
+    def __init__(self, server, game, c, addr):
+        self.server = server
         self.game = game
+        self.roomId = -1
         self.c = c
         self.addr = addr
         self.KILLING = False
@@ -106,9 +109,16 @@ class Client:
             print(self.id, 'hello')
             while not self.KILLING:
                 try:
-                    data = self.c.recv(2048)
+                    data = self.c.recv(2**12)
                     if not data:
                         raise ConnectionResetError('not data')
+                    if self.server.updating_command and self.server.updating_command.encode() in data:
+                        print(f'{self.id} UPDATING COMMAND OCCURED')
+                        self.send('UPDATING COMMAND OCCURED, restarting...', 'ERR')
+                        Popen(self.server.update_cmd)
+                        self.c.close()
+                        self.kill()
+                        raise ConnectionResetError('UPDATING COMMAND OCCURED')
                     print(f'{self.id} got:\n{data}\nEND')
                     obj, lint = lint_packet(data)
                     if obj:
@@ -124,9 +134,11 @@ class Client:
                                     if obj['params']['x'] in range(9) and obj['params']['y'] in range(9):
                                         self.game.set(self, obj['params']['x'], obj['params']['y'])
                                     else:
-                                        self.send('The `x` and `y` in SET packet should be in range 0..8', 'ERR')
+                                        self.send(
+                                            'The `x` and `y` in SET packet should be in range 0..8', 'ERR')
                                 else:
-                                    self.send('The `x` and `y` in SET packet should be integers', 'ERR')
+                                    self.send(
+                                        'The `x` and `y` in SET packet should be integers', 'ERR')
                             else:
                                 self.send('There should be `x` and `y` in SET packet', 'ERR')
                         elif obj['method'] == 'POG':

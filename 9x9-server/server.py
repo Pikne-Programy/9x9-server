@@ -10,11 +10,15 @@ from .game import Game
 
 
 class Server:
-    def __init__(self, port):
+    def __init__(self, port, updating_command=None, update_cmd=None):
         self.port = port
         self.KILLING = False
         self.thread_num = 1
         self.game = Game()
+        if updating_command and not update_cmd:
+            raise ValueError('update_cmd not specified')
+        self.updating_command = updating_command
+        self.update_cmd = update_cmd
 
     def _handler(self, signum, frame):
         print(f'[SIGNAL] Killing by {signum}')
@@ -33,7 +37,7 @@ class Server:
             while not self.KILLING:
                 try:
                     (c, addr) = self.s.accept()
-                    cc = Client(self.game, c, f'{addr[0]}:{str(addr[1])}')
+                    cc = Client(self, self.game, c, f'{addr[0]}:{str(addr[1])}')
                     Thread(target=cc.handler, args=(self.thread_num,)).start()
                     self.game.add(cc)
                     self.thread_num += 1
