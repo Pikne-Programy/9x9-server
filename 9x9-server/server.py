@@ -10,7 +10,7 @@ from .game import Game
 
 
 class Server:
-    def __init__(self, port, updating_command=None, update_cmd=None):
+    def __init__(self, port, updating_command=None, update_cmd=None, ping_every=120):
         self.port = port
         self.KILLING = False
         self.thread_num = 1
@@ -19,6 +19,7 @@ class Server:
             raise ValueError('update_cmd not specified')
         self.updating_command = updating_command
         self.update_cmd = update_cmd
+        self.ping_every = ping_every
 
     def _handler(self, signum, frame):
         print(f'[SIGNAL] Killing by {signum}')

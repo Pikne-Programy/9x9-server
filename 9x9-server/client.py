@@ -54,8 +54,6 @@ def lint_packet(packet):
         return None, traceback.format_exc()
     return obj, warns[0]
 
-PING_EVERY = 120
-
 class Client:
     def __init__(self, server, game, c, addr):
         self.server = server
@@ -66,7 +64,8 @@ class Client:
         self.KILLING = False
         self.killed = False
         self.has_thread = False
-        self.ping_timer = Timer(PING_EVERY, self.pingit)
+        print(self.server.ping_every/2)
+        self.ping_timer = Timer(self.server.ping_every/2, self.pingit)
         self.ping_timer.start()
         self.last_ping = -1
         self.last_pong = -1
@@ -74,13 +73,14 @@ class Client:
         self.id = '[ANON]'
 
     def pingit(self):
-        if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or PING_EVERY < 30):
+        print('xd')
+        if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or self.server.ping_every < 30):
             self.ping = -2
             self.send("I can't measure your ping")
             print(self.id+'-pinger ping is not possible')
         self.send({}, 'PNG')
         self.last_ping = time()
-        self.ping_timer = Timer(PING_EVERY, self.pingit)
+        self.ping_timer = Timer(self.server.ping_every, self.pingit)
         self.ping_timer.start()
         if self.KILLING:
             self.ping_timer.cancel()
