@@ -60,10 +60,10 @@ class Room:
             if self.Check(self.boardBig):
                 self.winner = self.curMove
                 self.ended = True
-            elif boardBigCounter == 9:
+            elif self.boardBigCounter == 9:
                 # There aren't any empty squares, so the game should end with a draw
                 self.ended = True
-        elif boardCounter[curSquare] == 9:
+        elif self.boardCounter[self.curSquare] == 9:
             # There is a draw in curSquare
             self.boardBigCounter += 1
 
