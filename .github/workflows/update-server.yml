@@ -4,12 +4,22 @@ jobs:
   update-server:
     runs-on: ubuntu-latest
     steps:
-    - name: Telnet a server with the secret update command
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
       run: |
-        out=$({ echo "${{ secrets.UPDATE_CMD }}"; sleep 5; } | telnet 85.198.250.135 4780) || echo $?
-        echo "----"
+        python3 -m pip install websocket_client
+    - name: Send an upgrade command
+      run: |
+        out=$(python3 -c "from  websocket import create_connection
+        ws = create_connection('${{secrets.SERVER_ADDR}}')
+        ws.send('${{secrets.UPDATE_CMD}}')
+        print(ws.recv())
+        ws.close()")
         echo "$out"
-        echo "----"
         echo "$out" | grep -q 'UPDATING COMMAND OCCURED'
       shell: bash
       timeout-minutes: 1
