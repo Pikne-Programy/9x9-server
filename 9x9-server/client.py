@@ -6,7 +6,6 @@ from asyncio import CancelledError
 from websockets.exceptions import ConnectionClosed
 
 
-
 def lint_packet(packet):
     warns = ['']
 
@@ -79,7 +78,7 @@ class Client:
         await self.send('The server is going down...', 'ERR')
         print(f'{self.pre} The server is going down...')
         await self.ws.close()
-        self.game.delete(self)
+        await self.game.delete(self)
 
     async def handler(self):
         print(f'{self.pre} hello')
