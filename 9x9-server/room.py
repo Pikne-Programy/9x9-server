@@ -6,6 +6,8 @@ class Room:
         self.name = name
         self.board = [[-1 for x in range(9)] for y in range(9)]
         self.boardBig = [[-1 for x in range(3)] for y in range(3)]
+        self.boardCounter = [0 for s in range(9)]
+        self.boardBigCounter = 0
         self.clients = []
         self.curMove = 0
         self.marked = -1
@@ -13,7 +15,6 @@ class Room:
         self.winner = -1
         self.ended = False
         self.lastMove = [-1, -1]
-        self.emptySquares = 81
 
     async def Connect(self, client):
         if len(self.clients) == 2:
@@ -48,7 +49,7 @@ class Room:
             return
 
         self.board[x][y] = self.curMove
-        self.emptySquares -= 1
+        self.boardCounter[curSquare] += 1
 
         topLeftX = 3*int(x/3)
         topLeftY = 3*int(y/3)
@@ -59,8 +60,12 @@ class Room:
             if self.Check(self.boardBig):
                 self.winner = self.curMove
                 self.ended = True
-        if self.emptySquares == 0:
-            self.ended = True
+            elif boardBigCounter == 9:
+                # There aren't any empty squares, so the game should end with a draw
+                self.ended = True
+        elif boardCounter[curSquare] == 9:
+            # There is a draw in curSquare
+            self.boardBigCounter += 1
 
         self.marked = 3*(y % 3) + x % 3
         if self.boardBig[self.marked % 3][int(self.marked/3)] != -1:
