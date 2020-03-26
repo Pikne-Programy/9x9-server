@@ -122,4 +122,5 @@ class Client:
                     await self.send(traceback.format_exc(), 'ERR')
         except ConnectionClosed:
             print(f'{self.pre} connection was closed')
+        await self.game.delete(self)
         print(f'{self.pre} bye')
