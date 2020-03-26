@@ -1,4 +1,4 @@
-# 9x9 Protocol v0.2
+# 9x9 Protocol v0.2.1
 
 ## Table of Contents
 
@@ -102,7 +102,7 @@ the info about the room and the board
  - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"` or `"O"`)
  - `you` (string) - your mark (e. g. `"X"` or `"O"`)
  - `move` (string) - whose turn is it (e. g. `"X"` or `"O"`)
- - `lastMove` (object) - in which field the last mark was placed
+ - `lastMove` (nullable object) - in which field the last mark was placed or `null` if there was no last move (so this will be the first move)
      - `x` (integer) -  the x coordinate of the field
      - `y` (integer) -  the y coordinate of the field
  - `marked` (integer) - the marked subboard (so that where should be next move done);
@@ -234,7 +234,7 @@ e. g.
         "author": "Pikne-Programy",
         "version": "v0.0.0.1",
         "fullName": "tic-tac-toe-9x9-mobile\nv0.0.0.1\nhttps://github.com/Pikne-Programy/tic-tac-toe-9x9-mobile",
-        "protocolVersion": "v0.2",
+        "protocolVersion": "v0.2.1",
         "nick": "NIRCEK_2103",
         "fullNick": "Nircek (Marcin Zepp)"
     },
