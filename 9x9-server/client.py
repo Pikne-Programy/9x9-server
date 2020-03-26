@@ -62,7 +62,8 @@ class Client:
         self.game = game
         self.ws = ws
         self.client_id = client_id
-        self.pre = f'[CLIENT {client_id}]'
+        self.addr = ':'.join([str(x) for x in self.ws.remote_address])
+        self.pre = f'[CLIENT {client_id} ({self.addr})]'
         self.room = None
 
     async def send(self, params, method="DBG", status=0):
