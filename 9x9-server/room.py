@@ -63,8 +63,10 @@ class Room:
             elif self.boardBigCounter == 9:
                 # There aren't any empty squares, so the game should end with a draw
                 self.ended = True
+                self.winner = -2
         elif self.boardCounter[curSquare] == 9:
             # There is a draw in curSquare
+            self.boardBig[self.marked % 3][int(self.marked/3)] = -2
             self.boardBigCounter += 1
 
         self.marked = 3*(y % 3) + x % 3
@@ -75,7 +77,7 @@ class Room:
         await self.SendSTTMessage()
 
     async def SendSTTMessage(self):
-        character = ["X", "O", "-"]
+        character = ["X", "O", "+", "-"]
 
         sBoard = ""
         for y in range(0, 9):
