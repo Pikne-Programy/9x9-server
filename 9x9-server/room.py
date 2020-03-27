@@ -57,6 +57,7 @@ class Room:
              for y1 in range(topLeftY, topLeftY+3)]
         if self.Check(b):
             self.boardBig[curSquare % 3][int(curSquare/3)] = self.curMove
+            self.boardBigCounter += 1
             if self.Check(self.boardBig):
                 self.winner = self.curMove
                 self.ended = True
