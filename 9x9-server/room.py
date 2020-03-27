@@ -13,7 +13,6 @@ class Room:
         self.marked = -1
         self.ready = False
         self.winner = -1
-        self.ended = False
         self.lastMove = [-1, -1]
 
     async def Connect(self, client):
@@ -33,7 +32,7 @@ class Room:
         if not self.ready:
             await client.send({"msg": "There are not enough players to start the game!\n"}, "BAD")
             return
-        if self.ended:
+        if self.winner != -1:
             await client.send({"msg": "The game is over!\n"}, "BAD")
             return
         if self.clients[self.curMove] != client:
@@ -60,10 +59,8 @@ class Room:
             self.boardBigCounter += 1
             if self.Check(self.boardBig):
                 self.winner = self.curMove
-                self.ended = True
             elif self.boardBigCounter == 9:
                 # There aren't any empty squares, so the game should end with a draw
-                self.ended = True
                 self.winner = -2
         elif self.boardCounter[curSquare] == 9:
             # There is a draw in curSquare
@@ -100,7 +97,6 @@ class Room:
             await c.send({
                 "board": sBoard,
                 "bigBoard": sBoardBig,
-                "isEnded": self.ended,
                 "whoWon":  character[self.winner],
                 "you": you,
                 "move": character[self.curMove],
@@ -114,7 +110,6 @@ class Room:
         print({
             "board": sBoard,
             "bigBoard": sBoardBig,
-            "isEnded": self.ended,
             "whoWon":  character[self.winner],
             "you": you,
             "move": character[self.curMove],
@@ -140,13 +135,14 @@ class Room:
         if self.ready != True:
             return
         if self.clients[0] == client:
-            self.winner = 1
+            if self.winner == -1:
+                self.winner = 1
             self.clients[0] = None
             if len(self.clients) == 2:
                 self.clients[1].room = None
         else:
-            self.winner = 0
+            if self.winner == -1:
+                self.winner = 0
             self.clients[1] = None
             self.clients[0].room = None
-        self.ended = True
         await self.SendSTTMessage()
