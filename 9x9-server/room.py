@@ -135,14 +135,17 @@ class Room:
         if self.ready != True:
             return
         if self.clients[0] == client:
-            if self.winner == -1:
-                self.winner = 1
             self.clients[0] = None
             if len(self.clients) == 2:
                 self.clients[1].room = None
-        else:
+
             if self.winner == -1:
-                self.winner = 0
+                self.winner = 1
+                await self.SendSTTMessage()
+        else:
             self.clients[1] = None
             self.clients[0].room = None
-        await self.SendSTTMessage()
+
+            if self.winner == -1:
+                self.winner = 0
+                await self.SendSTTMessage()
