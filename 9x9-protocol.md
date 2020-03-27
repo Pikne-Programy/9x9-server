@@ -1,4 +1,4 @@
-# 9x9 Protocol v0.3
+# 9x9 Protocol v0.3.1
 
 ## Table of Contents
 
@@ -98,6 +98,7 @@ the info about the room and the board
    so the second char of `board` is a field with x=1 and y=0
  - `bigBoard` (string) - the string with the big board (the wins on subboards (3x3 boards)), next rows of the board, made of ASCII characters: 'X', 'O', '-' or '+' when there was a draw\
    so the second char of `bigBoard` represents the subboard which would be marked with 1 (see `marked`)
+ - `isEnded` (boolean) - is the game ended (someone won, there was a draw or someone surrender)
  - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"`, `"O"` or `"+"` - there was a draw)
  - `you` (string) - your mark (e. g. `"X"` or `"O"`)
  - `move` (string) - whose turn is it (e. g. `"X"` or `"O"`)
@@ -233,7 +234,7 @@ e. g.
         "author": "Pikne-Programy",
         "version": "v0.0.0.1",
         "fullName": "tic-tac-toe-9x9-mobile\nv0.0.0.1\nhttps://github.com/Pikne-Programy/tic-tac-toe-9x9-mobile",
-        "protocolVersion": "v0.3",
+        "protocolVersion": "v0.3.1",
         "nick": "NIRCEK_2103",
         "fullNick": "Nircek (Marcin Zepp)"
     },
