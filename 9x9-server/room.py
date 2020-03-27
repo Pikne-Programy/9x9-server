@@ -1,56 +1,54 @@
 import time
 
 
-def SendClientMessage(client, message, type):
-    client.send({
-        "msg": message
-    }, type)
-
-
 class Room:
-    def __init__(self, game, id):
+    def __init__(self, name):
+        self.name = name
         self.board = [[-1 for x in range(9)] for y in range(9)]
         self.boardBig = [[-1 for x in range(3)] for y in range(3)]
         self.clients = []
-        self.game = game
-        self.id = id
         self.curMove = 0
         self.marked = -1
         self.ready = False
         self.winner = -1
+        self.ended = False
+        self.lastMove = [-1, -1]
+        self.emptySquares = 81
 
-    def Connect(self, client):
+    async def Connect(self, client):
         if len(self.clients) == 2:
             return
 
         self.clients.append(client)
 
         if len(self.clients) == 2:
-            self.Start()
+            await self.Start()
 
-    def Start(self):
+    async def Start(self):
         self.ready = True
-        for c in self.clients:
-            SendClientMessage(c, "connected\n", 'DBG')
+        await self.SendSTTMessage()
 
-    def Move(self, client, x, y):
+    async def Move(self, client, x, y):
         if not self.ready:
-            SendClientMessage(
-                client, "There are not enough players to start the game!\n", "BAD")
+            await client.send({"msg": "There are not enough players to start the game!\n"}, "BAD")
+            return
+        if self.ended:
+            await client.send({"msg": "The game is over!\n"}, "BAD")
             return
         if self.clients[self.curMove] != client:
-            SendClientMessage(client, "It isn't your move!\n", "BAD")
+            await client.send({"msg": "It isn't your move!\n"}, "BAD")
             return
         if self.board[x][y] != -1:
-            SendClientMessage(client, "This square is not empty! \n", "BAD")
+            await client.send({"msg": "This square is not empty!\n"}, "BAD")
             return
 
         curSquare = 3*int(y/3) + int(x/3)
-        if self.marked != curSquare and self.marked != -1:
-            SendClientMessage(client, "Yor move is in wrong big square! \n", "BAD")
+        if (self.marked != curSquare and self.marked != -1) or self.boardBig[curSquare % 3][int(curSquare/3)] != -1:
+            await client.send({"msg": "Yor move is in wrong big square!\n"}, "BAD")
             return
 
         self.board[x][y] = self.curMove
+        self.emptySquares -= 1
 
         topLeftX = 3*int(x/3)
         topLeftY = 3*int(y/3)
@@ -59,13 +57,19 @@ class Room:
         if self.Check(b):
             self.boardBig[curSquare % 3][int(curSquare/3)] = self.curMove
             if self.Check(self.boardBig):
-                self.winner = curMove
+                self.winner = self.curMove
+                self.ended = True
+        if self.emptySquares == 0:
+            self.ended = True
 
         self.marked = 3*(y % 3) + x % 3
+        if self.boardBig[self.marked % 3][int(self.marked/3)] != -1:
+            self.marked = -1
         self.curMove = (self.curMove+1) % 2
-        self.SendSTTMessage()
+        self.lastMove = [x, y]
+        await self.SendSTTMessage()
 
-    def SendSTTMessage(self):
+    async def SendSTTMessage(self):
         character = ["X", "O", "-"]
 
         sBoard = ""
@@ -78,24 +82,40 @@ class Room:
                 sBoardBig += character[self.boardBig[x][y]]
 
         for c in self.clients:
+            if c == None:
+                continue
             if c == self.clients[0]:
                 you = character[0]
             else:
                 you = character[1]
 
-            c.send({
-                "status": 0,
-                "method": "STT",
-                "params": {
-                    "board": sBoard,
-                    "bigBoard": sBoardBig,
-                    "whoWon":  character[self.winner],
-                    "you": you,
-                    "move": character[self.curMove],
-                    "marked": self.marked
+            await c.send({
+                "board": sBoard,
+                "bigBoard": sBoardBig,
+                "isEnded": self.ended,
+                "whoWon":  character[self.winner],
+                "you": you,
+                "move": character[self.curMove],
+                "lastMove": {
+                    "x": self.lastMove[0],
+                    "y": self.lastMove[1]
                 },
-                "time": int(time.time())
-            })
+                "marked": self.marked
+            }, 'STT')
+
+        print({
+            "board": sBoard,
+            "bigBoard": sBoardBig,
+            "isEnded": self.ended,
+            "whoWon":  character[self.winner],
+            "you": you,
+            "move": character[self.curMove],
+            "lastMove": {
+                "x": self.lastMove[0],
+                "y": self.lastMove[1]
+            },
+            "marked": self.marked
+        })
 
     def Check(self, b):
         for x1 in range(3):
@@ -107,3 +127,18 @@ class Room:
         if (b[0][0] == b[1][1] and b[1][1] == b[2][2] and b[2][2] == self.curMove) or \
                 (b[0][2] == b[1][1] and b[1][1] == b[2][0] and b[2][0] == self.curMove):
             return True
+
+    async def PlayerDisconnected(self, client):
+        if self.ready != True:
+            return
+        if self.clients[0] == client:
+            self.winner = 1
+            self.clients[0] = None
+            if len(self.clients) == 2:
+                self.clients[1].room = None
+        else:
+            self.winner = 0
+            self.clients[1] = None
+            self.clients[0].room = None
+        self.ended = True
+        await self.SendSTTMessage()

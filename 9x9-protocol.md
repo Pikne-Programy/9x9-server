@@ -1,4 +1,4 @@
-# 9x9 Protocol v0.2
+# 9x9 Protocol v0.3.1
 
 ## Table of Contents
 
@@ -96,13 +96,13 @@ e. g.
 the info about the room and the board
  - `board` (string) - the string with the board, next rows of the board, made of ASCII characters: 'X', 'O', '-'\
    so the second char of `board` is a field with x=1 and y=0
- - `bigBoard` (string) - the string with the big board (the wins on subboards (3x3 boards)), next rows of the board, made of ASCII characters: 'X', 'O', '-'\
+ - `bigBoard` (string) - the string with the big board (the wins on subboards (3x3 boards)), next rows of the board, made of ASCII characters: 'X', 'O', '-' or '+' when there was a draw\
    so the second char of `bigBoard` represents the subboard which would be marked with 1 (see `marked`)
  - `isEnded` (boolean) - is the game ended (someone won, there was a draw or someone surrender)
- - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"` or `"O"`)
+ - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"`, `"O"` or `"+"` - there was a draw)
  - `you` (string) - your mark (e. g. `"X"` or `"O"`)
  - `move` (string) - whose turn is it (e. g. `"X"` or `"O"`)
- - `lastMove` (object) - in which field the last mark was placed
+ - `lastMove` (nullable object) - in which field the last mark was placed or `null` if there was no last move (so this will be the first move)
      - `x` (integer) -  the x coordinate of the field
      - `y` (integer) -  the y coordinate of the field
  - `marked` (integer) - the marked subboard (so that where should be next move done);
@@ -234,7 +234,7 @@ e. g.
         "author": "Pikne-Programy",
         "version": "v0.0.0.1",
         "fullName": "tic-tac-toe-9x9-mobile\nv0.0.0.1\nhttps://github.com/Pikne-Programy/tic-tac-toe-9x9-mobile",
-        "protocolVersion": "v0.2",
+        "protocolVersion": "v0.3.1",
         "nick": "NIRCEK_2103",
         "fullNick": "Nircek (Marcin Zepp)"
     },

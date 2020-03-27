@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, timeout
-from threading import Thread
-from signal import signal, SIGINT, SIGTERM
-import json
+from asyncio import all_tasks, current_task, gather, get_event_loop as loop, create_task
+import websockets
+from signal import SIGTERM, SIGINT
 
 from .client import Client
 from .game import Game
@@ -12,8 +11,7 @@ from .game import Game
 class Server:
     def __init__(self, port, updating_command=None, update_cmd=None, ping_every=120):
         self.port = port
-        self.KILLING = False
-        self.thread_num = 1
+        self.client_id = 1
         self.game = Game()
         if updating_command and not update_cmd:
             raise ValueError('update_cmd not specified')
@@ -21,33 +19,31 @@ class Server:
         self.update_cmd = update_cmd
         self.ping_every = ping_every
 
-    def _handler(self, signum, frame):
-        print(f'[SIGNAL] Killing by {signum}')
-        self.KILLING = True
-        self.game.kill()
+    async def caught(self, ws, path):
+        cc = Client(self, self.game, ws, self.client_id)
+        self.client_id += 1
+        self.game.add(cc)
+        await cc.handler()
+
+    async def shutdown(self, sig=None):
+        if sig:
+            print(f'[SIGNAL] Got {sig}, closing connections...')
+        await self.game.kill()
+        tasks = [t for t in all_tasks() if t is not current_task()]
+        [task.cancel() for task in tasks]
+        print(f'[SIGNAL] Cancelling tasks...')
+        results = await gather(*tasks, return_exceptions=True)
+        for r in results:
+            if isinstance(r, Exception):
+                print(f'[SIGNAL] Got exception: {r}')
+        print(f'[SIGNAL] Stopping...')
+        loop().stop()
 
     def start(self):
-        self.old_sigint = signal(SIGINT, self._handler)
-        self.old_sigterm = signal(SIGTERM, self._handler)
-        self.s = socket(AF_INET,SOCK_STREAM)
-        self.s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self.s.bind(('', self.port))
-        self.s.listen(5)
-        self.s.settimeout(5)
-        try:
-            while not self.KILLING:
-                try:
-                    (c, addr) = self.s.accept()
-                    cc = Client(self, self.game, c, f'{addr[0]}:{str(addr[1])}')
-                    Thread(target=cc.handler, args=(self.thread_num,)).start()
-                    self.game.add(cc)
-                    self.thread_num += 1
-                except timeout:
-                    pass
-            else:
-                print('[MAIN] killed')
-        finally:
-            self.s.close()
-        signal(SIGINT, self.old_sigint)
-        signal(SIGTERM, self.old_sigterm)
-        print('[MAIN] exitting...')
+        start_server = websockets.serve(self.caught, "", self.port)
+
+        for sig in (SIGTERM, SIGINT):
+            loop().add_signal_handler(sig, lambda sig=sig: create_task(self.shutdown(sig)))
+
+        loop().run_until_complete(start_server)
+        loop().run_forever()

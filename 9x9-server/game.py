@@ -1,69 +1,71 @@
-from threading import Lock
 from .room import Room
-
-
-import random
-
-
-def sendRandomState(c):
-    # TODO: it's temporary of course and it is there only for testing
-    c.send({
-        "board": ''.join([random.choice(['X', 'O']+['-']*5) for i in range(9*9)]),
-        "bigBoard": ''.join([random.choice(['X', 'O']+['-']*8) for i in range(9)]),
-        "whoWon": random.choice(['X', 'O']+['-']*30),
-        "you": random.choice(['X', 'O']),
-        "move": random.choice(['X', 'O']),
-        "marked": random.randint(-1, 8)
-    }, 'STT')
 
 
 class Game:
     def __init__(self):
         self.clients = []
-        self.rooms = []
-        self.emptyRooms = []
-        self.lock = Lock()
+        self.killed = False
+        self.publicRooms = []
+        self.privateRooms = {}
 
     def __del__(self):
-        assert len(self.clients) == 0
+        assert not self.clients
 
     def add(self, client):
-        self.lock.acquire()
+        assert not self.killed
         self.clients += [client]
-        self.lock.release()
 
-    def delete(self, client):
-        self.lock.acquire()
+    async def delete(self, client):
+        if client.room != None:
+            try:
+                if client.room.name == "public":
+                    self.publicRooms.remove(client.room)
+                else:
+                    del self.privateRooms[client.room.name]
+            except (ValueError, KeyError):
+                pass
+            finally:
+                await client.room.PlayerDisconnected(client)
         if client in self.clients:
             self.clients.remove(client)
-            self.lock.release()
         else:
-            self.lock.release()
             raise ValueError(client, 'not in clients')
 
-    def kill(self):
-        self.KILLING = True
-        for c in self.clients:
-            c.kill()
+    async def kill(self, msg='The server is going down...'):
+        print('[GAME] killing')
+        self.killed = True
+        [await client.kill(msg) for client in self.clients]
+        assert not self.clients
+        print('[GAME] killed')
 
-    def join(self, client, room):
-        if len(self.emptyRooms) == 0:
-            r = Room(self, len(self.rooms))
-            self.rooms.append(r)
-            self.emptyRooms.append(r)
-        self.emptyRooms[0].Connect(client)
-        client.roomId = self.emptyRooms[0].id
+    async def join(self, client, room):
+        if room == "public":
+            if len(self.publicRooms) == 0 or len(self.publicRooms[0].clients) == 2:
+                r = Room(room)
+                self.publicRooms.insert(0, r)
+            else:
+                r = self.publicRooms[0]
 
-        if len(self.emptyRooms[0].clients) == 2:
-            self.emptyRooms.pop(0)
+            await r.Connect(client)
+            if len(r.clients) == 2:
+                self.publicRooms.insert(0, self.publicRooms.pop(0))
+        else:
+            try:
+                r = self.privateRooms[room]
+            except KeyError:
+                r = Room(room)
+                self.privateRooms[room] = r
+            finally:
+                await r.Connect(client)
 
-    def set(self, client, x, y):
-        print(client.roomId)
-        if client.roomId == -1:
-            client.send({
+        client.room = r
+
+    async def set(self, client, x, y):
+        if client.room == None:
+            await client.send({
                 "message": "You're not conected to any room!"
             }, "BAD")
             return
-        room = self.rooms[client.roomId]
+        room = client.room
 
-        room.Move(client, x, y)
+        await room.Move(client, x, y)
