@@ -6,14 +6,14 @@ class Room:
         self.name = name
         self.board = [[-1 for x in range(9)] for y in range(9)]
         self.boardBig = [[-1 for x in range(3)] for y in range(3)]
+        self.boardCounter = [0 for s in range(9)]
+        self.boardBigCounter = 0
         self.clients = []
         self.curMove = 0
         self.marked = -1
         self.ready = False
         self.winner = -1
-        self.ended = False
-        self.lastMove = [-1, -1]
-        self.emptySquares = 81
+        self.lastMove = [None, None]
 
     async def Connect(self, client):
         if len(self.clients) == 2:
@@ -32,7 +32,7 @@ class Room:
         if not self.ready:
             await client.send({"msg": "There are not enough players to start the game!\n"}, "BAD")
             return
-        if self.ended:
+        if self.winner != -1:
             await client.send({"msg": "The game is over!\n"}, "BAD")
             return
         if self.clients[self.curMove] != client:
@@ -48,7 +48,7 @@ class Room:
             return
 
         self.board[x][y] = self.curMove
-        self.emptySquares -= 1
+        self.boardCounter[curSquare] += 1
 
         topLeftX = 3*int(x/3)
         topLeftY = 3*int(y/3)
@@ -56,11 +56,16 @@ class Room:
              for y1 in range(topLeftY, topLeftY+3)]
         if self.Check(b):
             self.boardBig[curSquare % 3][int(curSquare/3)] = self.curMove
+            self.boardBigCounter += 1
             if self.Check(self.boardBig):
                 self.winner = self.curMove
-                self.ended = True
-        if self.emptySquares == 0:
-            self.ended = True
+            elif self.boardBigCounter == 9:
+                # There aren't any empty squares, so the game should end with a draw
+                self.winner = -2
+        elif self.boardCounter[curSquare] == 9:
+            # There is a draw in curSquare
+            self.boardBig[self.marked % 3][int(self.marked/3)] = -2
+            self.boardBigCounter += 1
 
         self.marked = 3*(y % 3) + x % 3
         if self.boardBig[self.marked % 3][int(self.marked/3)] != -1:
@@ -70,7 +75,7 @@ class Room:
         await self.SendSTTMessage()
 
     async def SendSTTMessage(self):
-        character = ["X", "O", "-"]
+        character = ["X", "O", "+", "-"]
 
         sBoard = ""
         for y in range(0, 9):
@@ -92,7 +97,6 @@ class Room:
             await c.send({
                 "board": sBoard,
                 "bigBoard": sBoardBig,
-                "isEnded": self.ended,
                 "whoWon":  character[self.winner],
                 "you": you,
                 "move": character[self.curMove],
@@ -106,7 +110,6 @@ class Room:
         print({
             "board": sBoard,
             "bigBoard": sBoardBig,
-            "isEnded": self.ended,
             "whoWon":  character[self.winner],
             "you": you,
             "move": character[self.curMove],
@@ -132,13 +135,17 @@ class Room:
         if self.ready != True:
             return
         if self.clients[0] == client:
-            self.winner = 1
             self.clients[0] = None
             if len(self.clients) == 2:
                 self.clients[1].room = None
+
+            if self.winner == -1:
+                self.winner = 1
+                await self.SendSTTMessage()
         else:
-            self.winner = 0
             self.clients[1] = None
             self.clients[0].room = None
-        self.ended = True
-        await self.SendSTTMessage()
+
+            if self.winner == -1:
+                self.winner = 0
+                await self.SendSTTMessage()
