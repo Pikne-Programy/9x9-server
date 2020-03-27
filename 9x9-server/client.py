@@ -114,6 +114,8 @@ class Client:
                         print(f'{self.pre} UPDATING COMMAND OCCURED')
                         await self.send('UPDATING COMMAND OCCURED, restarting...', 'ERR')
                         Popen(self.server.update_cmd)
+                        self.ws.close()
+                        break
                     print(f'{self.pre} got:\n{msg}\nEND')
                     obj, lint = lint_packet(msg)
                     if obj:
