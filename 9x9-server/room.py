@@ -13,7 +13,7 @@ class Room:
         self.marked = -1
         self.ready = False
         self.winner = -1
-        self.lastMove = [-1, -1]
+        self.lastMove = [None, None]
 
     async def Connect(self, client):
         if len(self.clients) == 2:
