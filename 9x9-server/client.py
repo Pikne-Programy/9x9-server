@@ -2,7 +2,7 @@ from time import time
 import json
 import traceback
 from subprocess import Popen
-from asyncio import CancelledError
+from asyncio import CancelledError, create_task, sleep
 from websockets.exceptions import ConnectionClosed
 
 
@@ -55,7 +55,6 @@ def lint_packet(packet):
         return None, traceback.format_exc()
     return obj, warns[0]
 
-
 class Client:
     def __init__(self, server, game, ws, client_id):
         self.server = server
@@ -65,6 +64,25 @@ class Client:
         self.addr = ':'.join([str(x) for x in self.ws.remote_address])
         self.pre = f'[CLIENT {client_id} ({self.addr})]'
         self.room = None
+        self.last_ping = -1
+        self.last_pong = -1
+        self.ping = -1
+        self._pinger = None
+        self.id = '[ANON]'
+
+    async def pingit(self):
+        if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or self.server.ping_every < 30):
+            self.ping = -2
+            self.send("I can't measure your ping")
+            print(self.id+'-pinger ping is not possible')
+        self.send({}, 'PNG')
+        self.last_ping = time()
+
+    async def pinger(self):
+        await sleep(self.server.ping_every/2)
+        while True:
+            await self.pingit()
+            await sleep(self.server.ping_every)
 
     async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
@@ -78,12 +96,18 @@ class Client:
         print(f'{self.pre} Disconnecting')
         await self.send('The server is going down...', 'ERR')
         print(f'{self.pre} The server is going down...')
+        self._pinger.cancel()
         await self.ws.close()
-        await self.game.delete(self)
+        await self._handler
+
+    async def handle(self):
+        self._handler = create_task(self.handler())
+        await self._handler
 
     async def handler(self):
         print(f'{self.pre} hello')
         try:
+            self._pinger = create_task(self.pinger())
             async for msg in self.ws:
                 try:
                     if self.server.updating_command and self.server.updating_command in msg:
@@ -110,13 +134,21 @@ class Client:
                                     await self.send('The `x` and `y` in SET packet should be integers', 'ERR')
                             else:
                                 await self.send('There should be `x` and `y` in SET packet', 'ERR')
+                        elif obj['method'] == 'POG':
+                            self.last_pong = time()
+                            self.ping = self.last_pong - self.last_ping
+                            await self.send(f"ping={self.ping}")
+                            print(f"{self.id} ping: {self.ping}")
+                        elif obj['method'] == 'PNG':
+                            print(f'{self.id} being pinged')
+                            await self.send({}, 'POG')
                         else:
                             await self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
                         print(lint)
                         await self.send(lint, 'ERR')
                 except CancelledError:
-                    break
+                    raise
                 except:
                     print(traceback.format_exc())
                     await self.send(traceback.format_exc(), 'ERR')

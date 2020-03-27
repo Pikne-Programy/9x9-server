@@ -9,7 +9,7 @@ from .game import Game
 
 
 class Server:
-    def __init__(self, port, updating_command=None, update_cmd=None):
+    def __init__(self, port, updating_command=None, update_cmd=None, ping_every=120):
         self.port = port
         self.client_id = 1
         self.game = Game()
@@ -17,12 +17,13 @@ class Server:
             raise ValueError('update_cmd not specified')
         self.updating_command = updating_command
         self.update_cmd = update_cmd
+        self.ping_every = ping_every
 
     async def caught(self, ws, path):
         cc = Client(self, self.game, ws, self.client_id)
         self.client_id += 1
         self.game.add(cc)
-        await cc.handler()
+        await cc.handle()
 
     async def shutdown(self, sig=None):
         if sig:
