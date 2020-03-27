@@ -23,7 +23,7 @@ class Server:
         cc = Client(self, self.game, ws, self.client_id)
         self.client_id += 1
         self.game.add(cc)
-        await cc.handler()
+        await cc.handle()
 
     async def shutdown(self, sig=None):
         if sig:

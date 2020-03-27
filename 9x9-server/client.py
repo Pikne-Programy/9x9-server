@@ -98,7 +98,11 @@ class Client:
         print(f'{self.pre} The server is going down...')
         self._pinger.cancel()
         await self.ws.close()
-        await self.game.delete(self)
+        await self._handler
+
+    async def handle(self):
+        self._handler = create_task(self.handler())
+        await self._handler
 
     async def handler(self):
         print(f'{self.pre} hello')
@@ -148,7 +152,6 @@ class Client:
                 except:
                     print(traceback.format_exc())
                     await self.send(traceback.format_exc(), 'ERR')
-            print('for end')
         except ConnectionClosed:
             print(f'{self.pre} connection was closed')
         await self.game.delete(self)
