@@ -1,4 +1,4 @@
-# 9x9 Protocol v0.3.1
+# 9x9 Protocol v1.0
 
 ## Table of Contents
 
@@ -98,7 +98,6 @@ the info about the room and the board
    so the second char of `board` is a field with x=1 and y=0
  - `bigBoard` (string) - the string with the big board (the wins on subboards (3x3 boards)), next rows of the board, made of ASCII characters: 'X', 'O', '-' or '+' when there was a draw\
    so the second char of `bigBoard` represents the subboard which would be marked with 1 (see `marked`)
- - `isEnded` (boolean) - is the game ended (someone won, there was a draw or someone surrender)
  - `whoWon` (string) - who won the game (e. g. `"-"` - no one, `"X"`, `"O"` or `"+"` - there was a draw)
  - `you` (string) - your mark (e. g. `"X"` or `"O"`)
  - `move` (string) - whose turn is it (e. g. `"X"` or `"O"`)
@@ -122,7 +121,6 @@ e. g.
     "params": {
         "board": "XO-XO-----O-X------O-X------O-X---------------------------X----------------------",
         "bigBoard": "OX-------",
-        "isEnded": false,
         "whoWon": "-",
         "you": "X",
         "move": "O",
@@ -216,13 +214,13 @@ the info about the unsupported stuff (unrecognized method or alike)
 ### VER (version)
 
 the info about the version of the using software
- - `name` (string) - the name of the using software
- - `author` (string) - the name of the software author
- - `version` (string) - the version of the software
- - `fullName` (string) - the description of the software (name, version, sitepage...)
  - `protocolVersion` (string) - the version of the supported protocol
- - `nick` (string) - the nick of the user, used to the identify users; matching regex `^[A-Z][A-Z0-9_]{2,29}$`
- - `fullNick` (string) - the nick of the user (utf-8 of course)
+ - `name` (string, optional) - the name of the using software
+ - `author` (string, optional) - the name of the software author
+ - `version` (string, optional) - the version of the software
+ - `fullName` (string, optional) - the description of the software (name, version, sitepage...)
+ - `nick` (string, optional) - the nick of the user, used to the identify users; matching regex `^[A-Z][A-Z0-9_]{2,29}$`
+ - `fullNick` (string, optional) - the nick of the user (utf-8 of course)
 
 e. g.
 ```json
@@ -230,14 +228,25 @@ e. g.
     "status": 0,
     "method": "VER",
     "params": {
+        "protocolVersion": "v1.0",
         "name": "tic-tac-toe-9x9-mobile",
         "author": "Pikne-Programy",
         "version": "v0.0.0.1",
         "fullName": "tic-tac-toe-9x9-mobile\nv0.0.0.1\nhttps://github.com/Pikne-Programy/tic-tac-toe-9x9-mobile",
-        "protocolVersion": "v0.3.1",
         "nick": "NIRCEK_2103",
         "fullNick": "Nircek (Marcin Zepp)"
     },
     "time": 1584009226
+}
+```
+this is the minimal example:
+```json
+{
+    "status": 0,
+    "method": "VER",
+    "params": {
+        "protocolVersion": "v1.0"
+    },
+    "time": 1585566364
 }
 ```
