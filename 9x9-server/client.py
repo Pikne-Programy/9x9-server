@@ -5,6 +5,7 @@ from subprocess import Popen
 from asyncio import CancelledError, create_task, sleep
 from websockets.exceptions import ConnectionClosed
 from random import uniform
+from distutils.version import LooseVersion as Ver
 
 from . import NAME, AUTHOR, LINK, VERSION, PROTOCOL_VERSION
 
@@ -163,7 +164,13 @@ class Client:
                             print(f'{self.id} being pinged')
                             await self.send({}, 'POG')
                         elif obj['method'] == 'VER':
-                            print(f'{self.id}  my VER: {obj["params"]}')
+                            if 'protocolVersion' in obj['params']:
+                                v = obj['params']['protocolVersion']
+                                msg = 'our' if Ver(v) == Ver(PROTOCOL_VERSION) else (
+                                    'older' if Ver(v) < Ver(PROTOCOL_VERSION) else 'newer')
+                                print(f'{self.pre} uses {msg} version: {v}')
+                            else:
+                                await self.send('There should be `protocolVersion` in VER packet', 'ERR')
                         else:
                             await self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
