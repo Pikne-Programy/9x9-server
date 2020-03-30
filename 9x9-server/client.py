@@ -68,14 +68,13 @@ class Client:
         self.last_pong = -1
         self.ping = -1
         self._pinger = None
-        self.id = '[ANON]'
 
     async def pingit(self):
         if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or self.server.ping_every < 30):
             self.ping = -2
-            self.send("I can't measure your ping")
-            print(self.id+'-pinger ping is not possible')
-        self.send({}, 'PNG')
+            await self.send("I can't measure your ping")
+            print(f'{self.pre} ping is not possible')
+        await self.send({}, 'PNG')
         self.last_ping = time()
 
     async def pinger(self):
@@ -140,9 +139,9 @@ class Client:
                             self.last_pong = time()
                             self.ping = self.last_pong - self.last_ping
                             await self.send(f"ping={self.ping}")
-                            print(f"{self.id} ping: {self.ping}")
+                            print(f"{self.pre} ping: {self.ping}")
                         elif obj['method'] == 'PNG':
-                            print(f'{self.id} being pinged')
+                            print(f'{self.pre} being pinged')
                             await self.send({}, 'POG')
                         else:
                             await self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
