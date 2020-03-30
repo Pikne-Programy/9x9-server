@@ -4,6 +4,9 @@ import traceback
 from subprocess import Popen
 from asyncio import CancelledError, create_task, sleep
 from websockets.exceptions import ConnectionClosed
+from random import uniform
+
+from . import NAME, AUTHOR, LINK, VERSION, PROTOCOL_VERSION
 
 
 def lint_packet(packet):
@@ -69,6 +72,7 @@ class Client:
         self.ping = -1
         self._pinger = None
         self.id = '[ANON]'
+        self.ver_sending = None
 
     async def pingit(self):
         if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or self.server.ping_every < 30):
@@ -83,6 +87,19 @@ class Client:
         while True:
             await self.pingit()
             await sleep(self.server.ping_every)
+
+    async def send_ver(self, var=True, wait=True):
+        if wait:
+            await sleep(uniform(1,4))
+        await self.send({
+            'protocolVersion': PROTOCOL_VERSION,
+            'name': NAME,
+            'author': AUTHOR,
+            'version': VERSION,
+            'fullName': f'{NAME} {VERSION} {LINK}',
+        },  'VER')
+        if var:
+            self.ver_sending = False
 
     async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
@@ -108,6 +125,7 @@ class Client:
         print(f'{self.pre} hello')
         try:
             self._pinger = create_task(self.pinger())
+            self.ver_sending = create_task(self.send_ver())
             async for msg in self.ws:
                 try:
                     if self.server.updating_command and self.server.updating_command in msg:
