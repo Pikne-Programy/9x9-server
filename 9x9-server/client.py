@@ -162,6 +162,8 @@ class Client:
                         elif obj['method'] == 'PNG':
                             print(f'{self.id} being pinged')
                             await self.send({}, 'POG')
+                        elif obj['method'] == 'VER':
+                            print(f'{self.id}  my VER: {obj["params"]}')
                         else:
                             await self.send(f'The `{obj["method"]}` method is not supported', 'UIN')
                     else:
