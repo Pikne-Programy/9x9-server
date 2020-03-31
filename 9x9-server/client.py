@@ -83,23 +83,32 @@ class Client:
         self.last_ping = time()
 
     async def pinger(self):
-        await sleep(self.server.ping_every/2)
-        while True:
-            await self.pingit()
-            await sleep(self.server.ping_every)
+        try:
+            await sleep(self.server.ping_every/2)
+            while True:
+                await self.pingit()
+                await sleep(self.server.ping_every)
+        except ConnectionClosed:
+            print(f'{self.pre} pinger: Connection closed')
 
-    async def send_ver(self, var=True, wait=True):
-        if wait:
-            await sleep(uniform(1,4))
-        await self.send({
-            'protocolVersion': PROTOCOL_VERSION,
-            'name': NAME,
-            'author': AUTHOR,
-            'version': VERSION,
-            'fullName': f'{NAME} {VERSION} {LINK}',
-        },  'VER')
-        if var:
-            self.ver_sending = False
+    async def send_ver(self, var=True, wait=True, exch=True):
+        try:
+            if wait:
+                await sleep(uniform(1,4))
+            await self.send({
+                'protocolVersion': PROTOCOL_VERSION,
+                'name': NAME,
+                'author': AUTHOR,
+                'version': VERSION,
+                'fullName': f'{NAME} {VERSION} {LINK}',
+            },  'VER')
+            if var:
+                self.ver_sending = False
+        except ConnectionClosed:
+            if exch:
+                print(f'{self.pre} VER-send: Connection closed')
+            else:
+                pass
 
     async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
