@@ -2,7 +2,7 @@ from time import time
 import json
 import traceback
 from subprocess import Popen
-from asyncio import CancelledError, create_task, sleep
+from asyncio import CancelledError, create_task, sleep, gather
 from websockets.exceptions import ConnectionClosed
 from random import uniform
 from distutils.version import LooseVersion as Ver
@@ -71,9 +71,13 @@ class Client:
         self.last_ping = -1
         self.last_pong = -1
         self.ping = -1
-        self._pinger = None
-        self.ver_sending = None
+        self.tasks = []
+        self.killed = False
 
+    def add_cor(self, cor):
+        t = create_task(cor)
+        self.tasks += [t]
+        return t
     async def pingit(self):
         if self.last_pong < self.last_ping and (self.last_ping < time() - 30 or self.server.ping_every < 30):
             self.ping = -2
@@ -90,6 +94,8 @@ class Client:
                 await sleep(self.server.ping_every)
         except ConnectionClosed:
             print(f'{self.pre} pinger: Connection closed')
+        except CancelledError:
+            print(f'{self.pre} pinger: Cancelled')
 
     async def send_ver(self, var=True, wait=True, exch=True):
         try:
@@ -109,6 +115,8 @@ class Client:
                 print(f'{self.pre} VER-send: Connection closed')
             else:
                 pass
+        except CancelledError:
+            print(f'{self.pre} send_ver: Cancelled')
 
     async def send(self, params, method="DBG", status=0):
         if isinstance(params, str):
@@ -118,23 +126,23 @@ class Client:
         obj += '\r\n'
         await self.ws.send(obj)
 
-    async def kill(self, msg):
-        print(f'{self.pre} Disconnecting')
-        await self.send('The server is going down...', 'ERR')
-        print(f'{self.pre} The server is going down...')
-        self._pinger.cancel()
-        await self.ws.close()
-        await self._handler
+    async def kill(self, msg=None):
+        self.killed = True
+        print(f'{self.pre} Disconnecting...')
+        if msg:
+            await self.send(msg, 'ERR')
+            print(f'{self.pre} "{msg}"')
+        [task.cancel() for task in self.tasks]
+        await gather(*self.tasks)
 
     async def handle(self):
-        self._handler = create_task(self.handler())
-        await self._handler
+        await self.add_cor(self.handler())
 
     async def handler(self):
         print(f'{self.pre} hello')
         try:
-            self._pinger = create_task(self.pinger())
-            self.ver_sending = create_task(self.send_ver())
+            self.add_cor(self.pinger())
+            self.add_cor(self.send_ver())
             async for msg in self.ws:
                 try:
                     if self.server.updating_command and self.server.updating_command in msg:
@@ -191,5 +199,10 @@ class Client:
                     await self.send(traceback.format_exc(), 'ERR')
         except ConnectionClosed:
             print(f'{self.pre} connection was closed')
+        except CancelledError:
+            print(f'{self.pre} handler: Cancelled')
+            if not self.killed:
+                await self.kill('Something went wrong and the server is going down...')
+            await self.ws.close()
         await self.game.delete(self)
         print(f'{self.pre} bye')
