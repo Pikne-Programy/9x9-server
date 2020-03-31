@@ -200,9 +200,12 @@ class Client:
         except ConnectionClosed:
             print(f'{self.pre} connection was closed')
         except CancelledError:
-            print(f'{self.pre} handler: Cancelled')
+            await self.game.delete(self)
             if not self.killed:
                 await self.kill('Something went wrong and the server is going down...')
             await self.ws.close()
+            print(f'{self.pre} handler: Cancelled')
+            return
         await self.game.delete(self)
+        create_task(self.kill())
         print(f'{self.pre} bye')
